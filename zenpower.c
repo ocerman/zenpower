@@ -36,10 +36,10 @@ MODULE_LICENSE("GPL");
 
 struct zenpower_data {
 	struct pci_dev *pdev;
-    void (*read_smusvi0_tel_plane0)(struct pci_dev *pdev, u32 *regval);
-    void (*read_smusvi0_tel_plane1)(struct pci_dev *pdev, u32 *regval);
-    void (*read_tempreg)(struct pci_dev *pdev, u32 *regval);
-    int temp_offset;
+	void (*read_smusvi0_tel_plane0)(struct pci_dev *pdev, u32 *regval);
+	void (*read_smusvi0_tel_plane1)(struct pci_dev *pdev, u32 *regval);
+	void (*read_tempreg)(struct pci_dev *pdev, u32 *regval);
+	int temp_offset;
 };
 
 struct tctl_offset {
@@ -58,36 +58,36 @@ static const struct tctl_offset tctl_offset_table[] = {
 };
 
 static umode_t zenpower_is_visible(struct kobject *kobj,
-				  struct attribute *attr, int index)
+				struct attribute *attr, int index)
 {
-    return attr->mode;
+	return attr->mode;
 }
 
 static u32 plane_to_vcc(u32 p)
 {
-    u32 vdd_cor;
-    vdd_cor = (p >> 16) & 0xff;
-    // U = 1550 - 6.25 * cdd_cor
+	u32 vdd_cor;
+	vdd_cor = (p >> 16) & 0xff;
+	// U = 1550 - 6.25 * cdd_cor
 
-    return  1550 - ((625 * vdd_cor) / 100);
+	return  1550 - ((625 * vdd_cor) / 100);
 }
 
 static u32 get_core_current(u32 plane)
 {
-    u32 idd_cor;
-    idd_cor = plane & 0xff;
-    // I = 1039.211 * iddcor
+	u32 idd_cor;
+	idd_cor = plane & 0xff;
+	// I = 1039.211 * iddcor
 
-    return  (1039211 * idd_cor) / 1000;
+	return  (1039211 * idd_cor) / 1000;
 }
 
 static u32 get_soc_current(u32 plane)
 {
-    u32 idd_cor;
-    idd_cor = plane & 0xff;
-    // I = 360.772 * iddcor
+	u32 idd_cor;
+	idd_cor = plane & 0xff;
+	// I = 360.772 * iddcor
 
-    return  (360772 * idd_cor) / 1000;
+	return  (360772 * idd_cor) / 1000;
 }
 
 static unsigned int get_raw_temp(struct zenpower_data *data)
@@ -117,7 +117,7 @@ static ssize_t temp1_input_show(struct device *dev,
 }
 
 static ssize_t temp1_max_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+				struct device_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d\n", 70 * 1000);
 }
@@ -138,7 +138,7 @@ static ssize_t in1_input_show(struct device *dev,
 	u32 plane, vcc;
 
 	data->read_smusvi0_tel_plane0(data->pdev, &plane);
-    vcc = plane_to_vcc(plane);
+	vcc = plane_to_vcc(plane);
 
 	return sprintf(buf, "%d\n", vcc);
 }
@@ -150,7 +150,7 @@ static ssize_t in2_input_show(struct device *dev,
 	u32 plane, vcc;
 
 	data->read_smusvi0_tel_plane1(data->pdev, &plane);
-    vcc = plane_to_vcc(plane);
+	vcc = plane_to_vcc(plane);
 
 	return sprintf(buf, "%d\n", vcc);
 }
@@ -196,30 +196,30 @@ static ssize_t power2_input_show(struct device *dev,
 }
 
 static ssize_t zen_label_show(struct device *dev,
-			       struct device_attribute *devattr, char *buf)
+				   struct device_attribute *devattr, char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 
-    switch (attr->index){
-        case 1:
-            return sprintf(buf, "SVI2_Core\n");
-        case 2:
-            return sprintf(buf, "SVI2_SoC\n");
-        case 11:
-            return sprintf(buf, "SVI2_C_Core\n");
-        case 12:
-            return sprintf(buf, "SVI2_C_SoC\n");
-        case 21:
-            return sprintf(buf, "SVI2_P_Core\n");
-        case 22:
-            return sprintf(buf, "SVI2_P_SoC\n");
-        case 31:
-            return sprintf(buf, "Tdie\n");
-        case 32:
-            return sprintf(buf, "Tctl\n");
-    }
+	switch (attr->index){
+		case 1:
+			return sprintf(buf, "SVI2_Core\n");
+		case 2:
+			return sprintf(buf, "SVI2_SoC\n");
+		case 11:
+			return sprintf(buf, "SVI2_C_Core\n");
+		case 12:
+			return sprintf(buf, "SVI2_C_SoC\n");
+		case 21:
+			return sprintf(buf, "SVI2_P_Core\n");
+		case 22:
+			return sprintf(buf, "SVI2_P_SoC\n");
+		case 31:
+			return sprintf(buf, "Tdie\n");
+		case 32:
+			return sprintf(buf, "Tctl\n");
+	}
 
-    return 0;
+	return 0;
 }
 
 static DEVICE_ATTR_RO(in1_input);
@@ -287,7 +287,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct device *dev = &pdev->dev;
 	struct zenpower_data *data;
 	struct device *hwmon_dev;
-    int i;
+	int i;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -296,17 +296,17 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	data->pdev = pdev;
 	data->read_smusvi0_tel_plane0 = read_smusvi0_tel_plane0_nb_f17;
 	data->read_smusvi0_tel_plane1 = read_smusvi0_tel_plane1_nb_f17;
-    data->read_tempreg = read_tempreg_nb_f17;
+	data->read_tempreg = read_tempreg_nb_f17;
 
-    for (i = 0; i < ARRAY_SIZE(tctl_offset_table); i++) {
+	for (i = 0; i < ARRAY_SIZE(tctl_offset_table); i++) {
 		const struct tctl_offset *entry = &tctl_offset_table[i];
 
 		if (boot_cpu_data.x86 == entry->model &&
-		    strstr(boot_cpu_data.x86_model_id, entry->id)) {
+			strstr(boot_cpu_data.x86_model_id, entry->id)) {
 			data->temp_offset = entry->offset;
 			break;
 		}
-    }
+	}
 
 	hwmon_dev = devm_hwmon_device_register_with_groups(dev, "zenpower", data, zenpower_groups);
 	return PTR_ERR_OR_ZERO(hwmon_dev);
