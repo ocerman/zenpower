@@ -1,5 +1,5 @@
 # Zenpower
-Zenpower is Linux kernel driver for reading temperature, voltage, current and power for AMD Zen family CPUs.
+Zenpower is Linux kernel driver for reading temperature, voltage(SVI2), current(SVI2) and power(SVI2) for AMD Zen family CPUs.
 
 ## Installation
 You can install this module via dkms.
