@@ -1,6 +1,17 @@
 TARGET	        := $(shell uname -r)
-KERNEL_BUILD	:= /usr/src/linux-headers-$(TARGET)
 DKMS_ROOT_PATH  := /usr/src/zenpower-0.1.0
+
+ifneq ("","$(wildcard /usr/src/linux-headers-$(TARGET)/*)")
+# Ubuntu
+KERNEL_BUILD	:= /usr/src/linux-headers-$(TARGET)
+else
+ifneq ("","$(wildcard /usr/src/kernels/$(TARGET)/*)")
+# Fedora
+KERNEL_BUILD	:= /usr/src/kernels/$(TARGET)
+else
+KERNEL_BUILD	:= $(KERNEL_MODULES)/build
+endif
+endif
 
 obj-m	:= $(patsubst %,%.o,zenpower)
 obj-ko	:= $(patsubst %,%.ko,zenpower)
