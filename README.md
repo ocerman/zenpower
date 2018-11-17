@@ -18,7 +18,7 @@ Because zenpower is using same PCI device as k10temp, you have to disable k10tem
 
 1. Check if k10temp is active. `lsmod | grep k10temp`
 2. Unload k10temp `sudo modprobe -r k10temp`
-3. (optional) blacklist k10temp: `sudo bash -c 'sudo echo "blacklist k10temp" > /etc/modprobe.d/blacklist.conf'`
+3. (optional) blacklist k10temp: `sudo bash -c 'sudo echo -e "\n# replaced with zenpower\nblacklist k10temp" >> /etc/modprobe.d/blacklist.conf'`
 4. Activate zenpower `sudo modprobe zenpower`
 
 ## Sensors monitoring
