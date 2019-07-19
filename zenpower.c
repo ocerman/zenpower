@@ -28,6 +28,10 @@ MODULE_LICENSE("GPL");
 #define PCI_DEVICE_ID_AMD_17H_M10H_DF_F3	0x15eb
 #endif
 
+#ifndef PCI_DEVICE_ID_AMD_17H_M30H_DF_F3
+#define PCI_DEVICE_ID_AMD_17H_M30H_DF_F3	0x1493
+#endif
+
 /* F17h M01h Access througn SMN */
 #define F17H_M01H_REPORTED_TEMP_CTRL_OFFSET	0x00059800
 #define F17H_M01H_SVI	                    0x0005A000
@@ -315,6 +319,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 static const struct pci_device_id zenpower_id_table[] = {
 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_17H_DF_F3) },
 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_17H_M10H_DF_F3) },
+	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_17H_M30H_DF_F3) },
 	{}
 };
 MODULE_DEVICE_TABLE(pci, zenpower_id_table);

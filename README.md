@@ -22,4 +22,12 @@ Because zenpower is using same PCI device as k10temp, you have to disable k10tem
 4. Activate zenpower `sudo modprobe zenpower`
 
 ## Sensors monitoring
-You can use this script: [zenmonitor](https://github.com/ocerman/zenmonitor), or your favourie sensors monitoring software
+You can use this app: [zenmonitor](https://github.com/ocerman/zenmonitor), or your favourie sensors monitoring software
+
+## Update instructions
+1. Unload zenpower `sudo modprobe -r zenpower`
+2. Goto zenpower directory `cd ~/zenpower`
+3. Uninstall old version `sudo make dkms-uninstall`
+4. Update code from git `git pull`
+5. Install new version `sudo make dkms-install`
+6. Activate zenpower `sudo modprobe zenpower`

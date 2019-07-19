@@ -1,5 +1,5 @@
 TARGET	        := $(shell uname -r)
-DKMS_ROOT_PATH  := /usr/src/zenpower-0.1.0
+DKMS_ROOT_PATH  := /usr/src/zenpower-0.1.1
 
 ifneq ("","$(wildcard /usr/src/linux-headers-$(TARGET)/*)")
 # Ubuntu
@@ -31,10 +31,10 @@ dkms-install:
 	cp $(CURDIR)/dkms.conf $(DKMS_ROOT_PATH)
 	cp $(CURDIR)/Makefile $(DKMS_ROOT_PATH)
 	cp $(CURDIR)/zenpower.c $(DKMS_ROOT_PATH)
-	dkms add zenpower/0.1.0
-	dkms build zenpower/0.1.0
-	dkms install zenpower/0.1.0
+	dkms add zenpower/0.1.1
+	dkms build zenpower/0.1.1
+	dkms install zenpower/0.1.1
 
 dkms-uninstall:
-	dkms remove zenpower/0.1.0 --all
+	dkms remove zenpower/0.1.1 --all
 	rm -rf $(DKMS_ROOT_PATH)
