@@ -318,8 +318,13 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	data->pdev = pdev;
 	data->read_amdsmn_addr = read_amdsmn_addr;
-	data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
-	data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE1;
+	#ifndef SWAP_CORE_SOC
+		data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
+		data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE1;
+	#else
+		data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE1;
+		data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE0;
+	#endif
 
 	for (i = 0; i < ARRAY_SIZE(tctl_offset_table); i++) {
 		const struct tctl_offset *entry = &tctl_offset_table[i];

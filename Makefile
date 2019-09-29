@@ -1,5 +1,6 @@
-TARGET	        := $(shell uname -r)
-DKMS_ROOT_PATH  := /usr/src/zenpower-0.1.2
+VERSION         := 0.1.3
+TARGET          := $(shell uname -r)
+DKMS_ROOT_PATH  := /usr/src/zenpower-0.1.3
 
 ifneq ("","$(wildcard /usr/src/linux-headers-$(TARGET)/*)")
 # Ubuntu
@@ -16,7 +17,7 @@ endif
 obj-m	:= $(patsubst %,%.o,zenpower)
 obj-ko	:= $(patsubst %,%.ko,zenpower)
 
-.PHONY: all modules clean dkms-install dkms-uninstall
+.PHONY: all modules clean dkms-install dkms-install-swapped dkms-uninstall
 
 all: modules
 
@@ -31,10 +32,14 @@ dkms-install:
 	cp $(CURDIR)/dkms.conf $(DKMS_ROOT_PATH)
 	cp $(CURDIR)/Makefile $(DKMS_ROOT_PATH)
 	cp $(CURDIR)/zenpower.c $(DKMS_ROOT_PATH)
-	dkms add zenpower/0.1.2
-	dkms build zenpower/0.1.2
-	dkms install zenpower/0.1.2
+
+	sed -e "s/@CFLGS@/${MCFLAGS}/" \
+	    -i $(DKMS_ROOT_PATH)/dkms.conf
+
+	dkms add zenpower/$(VERSION)
+	dkms build zenpower/$(VERSION)
+	dkms install zenpower/$(VERSION)
 
 dkms-uninstall:
-	dkms remove zenpower/0.1.2 --all
+	dkms remove zenpower/$(VERSION) --all
 	rm -rf $(DKMS_ROOT_PATH)
