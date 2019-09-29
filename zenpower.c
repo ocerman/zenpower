@@ -47,6 +47,7 @@ struct zenpower_data {
 	void (*read_smusvi0_tel_plane0)(struct pci_dev *pdev, u32 *regval);
 	void (*read_smusvi0_tel_plane1)(struct pci_dev *pdev, u32 *regval);
 	void (*read_tempreg)(struct pci_dev *pdev, u32 *regval);
+	void (*read_amdsmn_addr)(struct pci_dev *pdev, u32 address, u32 *regval);
 	int temp_offset;
 };
 
@@ -203,6 +204,27 @@ static ssize_t power2_input_show(struct device *dev,
 	return sprintf(buf, "%d\n", get_soc_current(plane) * plane_to_vcc(plane) );
 }
 
+int static debug_addrs_arr[8] = {
+	F17H_M01H_SVI, F17H_M01H_SVI + 0xc, F17H_M01H_SVI + 0x10,
+	0x000598BC, 0x0005994C, 0x00059954, 0x00059958, 0x0005995C
+};
+
+static ssize_t debug_data_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	int i, len = 0;
+	struct zenpower_data *data = dev_get_drvdata(dev);
+	u32 smndata;
+
+	for (i = 0; i < 8; i++){
+		data->read_amdsmn_addr(data->pdev, debug_addrs_arr[i], &smndata);
+		len += sprintf(buf + len, "%08x = %08x\n", debug_addrs_arr[i], smndata);
+	}
+
+	return len;
+}
+
+
 static ssize_t zen_label_show(struct device *dev,
 				   struct device_attribute *devattr, char *buf)
 {
@@ -247,6 +269,7 @@ static DEVICE_ATTR_RO(temp1_max);
 static SENSOR_DEVICE_ATTR(temp1_label, 0444, zen_label_show, NULL, 31);
 static DEVICE_ATTR_RO(temp2_input);
 static SENSOR_DEVICE_ATTR(temp2_label, 0444, zen_label_show, NULL, 32);
+static DEVICE_ATTR_RO(debug_data);
 
 static struct attribute *zenpower_attrs[] = {
 	&dev_attr_in1_input.attr,
@@ -266,6 +289,7 @@ static struct attribute *zenpower_attrs[] = {
 	&sensor_dev_attr_temp1_label.dev_attr.attr,
 	&dev_attr_temp2_input.attr,
 	&sensor_dev_attr_temp2_label.dev_attr.attr,
+	&dev_attr_debug_data.attr,
 	NULL
 };
 
@@ -290,6 +314,11 @@ static void read_tempreg_nb_f17(struct pci_dev *pdev, u32 *regval)
 	amd_smn_read(amd_pci_dev_to_node_id(pdev), F17H_M01H_REPORTED_TEMP_CTRL_OFFSET, regval);
 }
 
+static void read_amdsmn_addr(struct pci_dev *pdev, u32 address, u32 *regval)
+{
+	amd_smn_read(amd_pci_dev_to_node_id(pdev), address, regval);
+}
+
 static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	struct device *dev = &pdev->dev;
@@ -305,6 +334,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	data->read_smusvi0_tel_plane0 = read_smusvi0_tel_plane0_nb_f17;
 	data->read_smusvi0_tel_plane1 = read_smusvi0_tel_plane1_nb_f17;
 	data->read_tempreg = read_tempreg_nb_f17;
+	data->read_amdsmn_addr = read_amdsmn_addr;
 
 	for (i = 0; i < ARRAY_SIZE(tctl_offset_table); i++) {
 		const struct tctl_offset *entry = &tctl_offset_table[i];
