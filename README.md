@@ -34,3 +34,7 @@ You can use this app: [zenmonitor](https://github.com/ocerman/zenmonitor), or yo
 4. Update code from git `git pull`
 5. Install new version `sudo make dkms-install`
 6. Activate zenpower `sudo modprobe zenpower`
+
+## Known Issues
+ - On some systems the SVI2 values for Core/SOC may be swapped. As a workaround you can install module with `sudo make dkms-install MCFLAGS=-DSWAP_CORE_SOC` to swap them back.
+ - The formula for calculating amperage/wattage from raw values may not be correct for all systems.
