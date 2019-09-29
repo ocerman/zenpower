@@ -21,33 +21,33 @@ MODULE_LICENSE("GPL");
 
 
 #ifndef PCI_DEVICE_ID_AMD_17H_DF_F3
-#define PCI_DEVICE_ID_AMD_17H_DF_F3	        0x1463
+#define PCI_DEVICE_ID_AMD_17H_DF_F3         0x1463
 #endif
 
 #ifndef PCI_DEVICE_ID_AMD_17H_M10H_DF_F3
-#define PCI_DEVICE_ID_AMD_17H_M10H_DF_F3	0x15eb
+#define PCI_DEVICE_ID_AMD_17H_M10H_DF_F3    0x15eb
 #endif
 
 #ifndef PCI_DEVICE_ID_AMD_17H_M30H_DF_F3
-#define PCI_DEVICE_ID_AMD_17H_M30H_DF_F3	0x1493
+#define PCI_DEVICE_ID_AMD_17H_M30H_DF_F3    0x1493
 #endif
 
 #ifndef PCI_DEVICE_ID_AMD_17H_M70H_DF_F3
-#define PCI_DEVICE_ID_AMD_17H_M70H_DF_F3 	0x1443
+#define PCI_DEVICE_ID_AMD_17H_M70H_DF_F3    0x1443
 #endif
 
-/* F17h M01h Access througn SMN */
-#define F17H_M01H_REPORTED_TEMP_CTRL_OFFSET	0x00059800
-#define F17H_M01H_SVI	                    0x0005A000
+#define F17H_M01H_REPORTED_TEMP_CTRL        0x00059800
+#define F17H_M01H_SVI                       0x0005A000
+#define F17H_M01H_SVI_TEL_PLANE0            F17H_M01H_SVI + 0xc
+#define F17H_M01H_SVI_TEL_PLANE1            F17H_M01H_SVI + 0x10
 
 #define F17H_TEMP_ADJUST_MASK               0x80000
 
 struct zenpower_data {
 	struct pci_dev *pdev;
-	void (*read_smusvi0_tel_plane0)(struct pci_dev *pdev, u32 *regval);
-	void (*read_smusvi0_tel_plane1)(struct pci_dev *pdev, u32 *regval);
-	void (*read_tempreg)(struct pci_dev *pdev, u32 *regval);
 	void (*read_amdsmn_addr)(struct pci_dev *pdev, u32 address, u32 *regval);
+	u32 svi_core_addr;
+	u32 svi_soc_addr;
 	int temp_offset;
 };
 
@@ -76,7 +76,7 @@ static u32 plane_to_vcc(u32 p)
 {
 	u32 vdd_cor;
 	vdd_cor = (p >> 16) & 0xff;
-	// U = 1550 - 6.25 * cdd_cor
+	// U = 1550 - 6.25 * vddcor
 
 	return  1550 - ((625 * vdd_cor) / 100);
 }
@@ -104,7 +104,7 @@ static unsigned int get_raw_temp(struct zenpower_data *data)
 	unsigned int temp;
 	u32 regval;
 
-	data->read_tempreg(data->pdev, &regval);
+	data->read_amdsmn_addr(data->pdev, F17H_M01H_REPORTED_TEMP_CTRL, &regval);
 	temp = (regval >> 21) * 125;
 	if (regval & F17H_TEMP_ADJUST_MASK)
 		temp -= 49000;
@@ -146,7 +146,7 @@ static ssize_t in1_input_show(struct device *dev,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 	u32 plane, vcc;
 
-	data->read_smusvi0_tel_plane0(data->pdev, &plane);
+	data->read_amdsmn_addr(data->pdev, data->svi_core_addr, &plane);
 	vcc = plane_to_vcc(plane);
 
 	return sprintf(buf, "%d\n", vcc);
@@ -158,7 +158,7 @@ static ssize_t in2_input_show(struct device *dev,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 	u32 plane, vcc;
 
-	data->read_smusvi0_tel_plane1(data->pdev, &plane);
+	data->read_amdsmn_addr(data->pdev, data->svi_soc_addr, &plane);
 	vcc = plane_to_vcc(plane);
 
 	return sprintf(buf, "%d\n", vcc);
@@ -170,7 +170,7 @@ static ssize_t curr1_input_show(struct device *dev,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 	u32 plane;
 
-	data->read_smusvi0_tel_plane0(data->pdev, &plane);
+	data->read_amdsmn_addr(data->pdev, data->svi_core_addr, &plane);
 	return sprintf(buf, "%d\n", get_core_current(plane) );
 }
 
@@ -180,7 +180,7 @@ static ssize_t curr2_input_show(struct device *dev,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 	u32 plane;
 
-	data->read_smusvi0_tel_plane1(data->pdev, &plane);
+	data->read_amdsmn_addr(data->pdev, data->svi_soc_addr, &plane);
     return sprintf(buf, "%d\n", get_soc_current(plane) );
 }
 
@@ -190,7 +190,7 @@ static ssize_t power1_input_show(struct device *dev,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 	u32 plane;
 
-	data->read_smusvi0_tel_plane0(data->pdev, &plane);
+	data->read_amdsmn_addr(data->pdev, data->svi_core_addr, &plane);
 	return sprintf(buf, "%d\n", get_core_current(plane) * plane_to_vcc(plane) );
 }
 
@@ -200,12 +200,12 @@ static ssize_t power2_input_show(struct device *dev,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 	u32 plane;
 
-	data->read_smusvi0_tel_plane1(data->pdev, &plane);
+	data->read_amdsmn_addr(data->pdev, data->svi_soc_addr, &plane);
 	return sprintf(buf, "%d\n", get_soc_current(plane) * plane_to_vcc(plane) );
 }
 
-int static debug_addrs_arr[8] = {
-	F17H_M01H_SVI, F17H_M01H_SVI + 0xc, F17H_M01H_SVI + 0x10,
+int static debug_addrs_arr[] = {
+	F17H_M01H_SVI + 0x8, F17H_M01H_SVI_TEL_PLANE0, F17H_M01H_SVI_TEL_PLANE1,
 	0x000598BC, 0x0005994C, 0x00059954, 0x00059958, 0x0005995C
 };
 
@@ -216,7 +216,7 @@ static ssize_t debug_data_show(struct device *dev,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 	u32 smndata;
 
-	for (i = 0; i < 8; i++){
+	for (i = 0; i < ARRAY_SIZE(debug_addrs_arr); i++){
 		data->read_amdsmn_addr(data->pdev, debug_addrs_arr[i], &smndata);
 		len += sprintf(buf + len, "%08x = %08x\n", debug_addrs_arr[i], smndata);
 	}
@@ -226,7 +226,7 @@ static ssize_t debug_data_show(struct device *dev,
 
 
 static ssize_t zen_label_show(struct device *dev,
-				   struct device_attribute *devattr, char *buf)
+				struct device_attribute *devattr, char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 
@@ -299,20 +299,6 @@ static const struct attribute_group zenpower_group = {
 };
 __ATTRIBUTE_GROUPS(zenpower);
 
-static void read_smusvi0_tel_plane0_nb_f17(struct pci_dev *pdev, u32 *regval)
-{
-	amd_smn_read(amd_pci_dev_to_node_id(pdev), F17H_M01H_SVI + 0xc, regval);
-}
-
-static void read_smusvi0_tel_plane1_nb_f17(struct pci_dev *pdev, u32 *regval)
-{
-	amd_smn_read(amd_pci_dev_to_node_id(pdev), F17H_M01H_SVI + 0x10, regval);
-}
-
-static void read_tempreg_nb_f17(struct pci_dev *pdev, u32 *regval)
-{
-	amd_smn_read(amd_pci_dev_to_node_id(pdev), F17H_M01H_REPORTED_TEMP_CTRL_OFFSET, regval);
-}
 
 static void read_amdsmn_addr(struct pci_dev *pdev, u32 address, u32 *regval)
 {
@@ -331,10 +317,9 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		return -ENOMEM;
 
 	data->pdev = pdev;
-	data->read_smusvi0_tel_plane0 = read_smusvi0_tel_plane0_nb_f17;
-	data->read_smusvi0_tel_plane1 = read_smusvi0_tel_plane1_nb_f17;
-	data->read_tempreg = read_tempreg_nb_f17;
 	data->read_amdsmn_addr = read_amdsmn_addr;
+	data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
+	data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE1;
 
 	for (i = 0; i < ARRAY_SIZE(tctl_offset_table); i++) {
 		const struct tctl_offset *entry = &tctl_offset_table[i];
