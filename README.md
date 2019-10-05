@@ -2,7 +2,7 @@
 Zenpower is Linux kernel driver for reading temperature, voltage(SVI2), current(SVI2) and power(SVI2) for AMD Zen family CPUs.
 
 Make sure that your Linux kernel have support for your CPUs as Zenpower is using kernel calls to read values from SMN.
-For AMD family 17h Model 70h (Ryzen 3000) CPUs you need kernel with this patch: https://patchwork.kernel.org/patch/11043277/
+For AMD family 17h Model 70h (Ryzen 3000) CPUs you need kernel version 5.4rc1 or newer or kernel with this patch: https://patchwork.kernel.org/patch/11043277/
 
 ## Installation
 You can install this module via dkms.
@@ -35,6 +35,9 @@ You can use this app: [zenmonitor](https://github.com/ocerman/zenmonitor), or yo
 5. Install new version `sudo make dkms-install`
 6. Activate zenpower `sudo modprobe zenpower`
 
+## Help needed
+It would be very helpful for me for further development of Zenpower if you can share debug data from zenpower. [Read more](https://github.com/ocerman/zenpower/issues/12)
+
 ## Known Issues
- - On some systems the SVI2 values for Core/SOC may be swapped. As a workaround you can install module with `sudo make dkms-install MCFLAGS=-DSWAP_CORE_SOC` to swap them back.
- - The formula for calculating amperage/wattage from raw values may not be correct for all systems.
+ - On some systems the SVI2 values for Core/SOC may be swapped. As a workaround you can install module with `sudo make dkms-install MCFLAGS=-DSWAP_CORE_SOC` to swap them back. (Should be fixed in version 0.1.4)
+ - The formula for calculating amperage/wattage from raw values may not be correct for all systems. (Should be fixed for Zen2 Ryzen CPUs in version 0.1.4)
