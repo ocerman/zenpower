@@ -49,6 +49,7 @@ struct zenpower_data {
 	u32 svi_core_addr;
 	u32 svi_soc_addr;
 	int temp_offset;
+	bool zen2;
 };
 
 struct tctl_offset {
@@ -81,22 +82,28 @@ static u32 plane_to_vcc(u32 p)
 	return  1550 - ((625 * vdd_cor) / 100);
 }
 
-static u32 get_core_current(u32 plane)
+static u32 get_core_current(u32 plane, bool zen2)
 {
-	u32 idd_cor;
+	u32 idd_cor, fc;
 	idd_cor = plane & 0xff;
-	// I = 1039.211 * iddcor
 
-	return  (1039211 * idd_cor) / 1000;
+	// I = 1039.211 * iddcor
+	// I =  658.823 * iddcor
+	fc = zen2 ? 658823 : 1039211;
+
+	return  (fc * idd_cor) / 1000;
 }
 
-static u32 get_soc_current(u32 plane)
+static u32 get_soc_current(u32 plane, bool zen2)
 {
-	u32 idd_cor;
+	u32 idd_cor, fc;
 	idd_cor = plane & 0xff;
-	// I = 360.772 * iddcor
 
-	return  (360772 * idd_cor) / 1000;
+	// I = 360.772 * iddcor
+	// I = 294.3   * iddcor
+	fc = zen2 ? 294300 : 360772;
+
+	return  (fc * idd_cor) / 1000;
 }
 
 static unsigned int get_raw_temp(struct zenpower_data *data)
@@ -171,7 +178,7 @@ static ssize_t curr1_input_show(struct device *dev,
 	u32 plane;
 
 	data->read_amdsmn_addr(data->pdev, data->svi_core_addr, &plane);
-	return sprintf(buf, "%d\n", get_core_current(plane) );
+	return sprintf(buf, "%d\n", get_core_current(plane, data->zen2));
 }
 
 static ssize_t curr2_input_show(struct device *dev,
@@ -181,7 +188,7 @@ static ssize_t curr2_input_show(struct device *dev,
 	u32 plane;
 
 	data->read_amdsmn_addr(data->pdev, data->svi_soc_addr, &plane);
-    return sprintf(buf, "%d\n", get_soc_current(plane) );
+	return sprintf(buf, "%d\n", get_soc_current(plane, data->zen2));
 }
 
 static ssize_t power1_input_show(struct device *dev,
@@ -191,7 +198,8 @@ static ssize_t power1_input_show(struct device *dev,
 	u32 plane;
 
 	data->read_amdsmn_addr(data->pdev, data->svi_core_addr, &plane);
-	return sprintf(buf, "%d\n", get_core_current(plane) * plane_to_vcc(plane) );
+	return sprintf(buf, "%d\n",
+		get_core_current(plane, data->zen2) * plane_to_vcc(plane));
 }
 
 static ssize_t power2_input_show(struct device *dev,
@@ -201,7 +209,8 @@ static ssize_t power2_input_show(struct device *dev,
 	u32 plane;
 
 	data->read_amdsmn_addr(data->pdev, data->svi_soc_addr, &plane);
-	return sprintf(buf, "%d\n", get_soc_current(plane) * plane_to_vcc(plane) );
+	return sprintf(buf, "%d\n",
+		get_soc_current(plane, data->zen2) * plane_to_vcc(plane));
 }
 
 int static debug_addrs_arr[] = {
@@ -310,21 +319,34 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct device *dev = &pdev->dev;
 	struct zenpower_data *data;
 	struct device *hwmon_dev;
+	bool swapped_addr = false;
 	int i;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
+	data->zen2 = false;
 	data->pdev = pdev;
 	data->read_amdsmn_addr = read_amdsmn_addr;
-	#ifndef SWAP_CORE_SOC
-		data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
-		data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE1;
-	#else
+
+	if (boot_cpu_data.x86 == 0x17 && boot_cpu_data.x86_model == 0x71) {
+		data->zen2 = true;
+		swapped_addr = true;
+	}
+
+	#ifdef SWAP_CORE_SOC
+		swapped_addr = !swapped_addr;
+	#endif
+
+	if (swapped_addr) {
 		data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE1;
 		data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE0;
-	#endif
+	}
+	else {
+		data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
+		data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE1;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(tctl_offset_table); i++) {
 		const struct tctl_offset *entry = &tctl_offset_table[i];
