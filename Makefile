@@ -1,6 +1,6 @@
-VERSION         := 0.1.3
+VERSION         := 0.1.4
 TARGET          := $(shell uname -r)
-DKMS_ROOT_PATH  := /usr/src/zenpower-0.1.3
+DKMS_ROOT_PATH  := /usr/src/zenpower-$(VERSION)
 
 ifneq ("","$(wildcard /usr/src/linux-headers-$(TARGET)/*)")
 # Ubuntu
@@ -34,6 +34,7 @@ dkms-install:
 	cp $(CURDIR)/zenpower.c $(DKMS_ROOT_PATH)
 
 	sed -e "s/@CFLGS@/${MCFLAGS}/" \
+	    -e "s/@VERSION@/$(VERSION)/" \
 	    -i $(DKMS_ROOT_PATH)/dkms.conf
 
 	dkms add zenpower/$(VERSION)

@@ -4,9 +4,10 @@
 #include <linux/pci.h>
 #include <asm/amd_nb.h>
 
-MODULE_DESCRIPTION("Voltage monitor for AMD ZEN family CPUs");
+MODULE_DESCRIPTION("AMD ZEN family CPU Sensors Driver");
 MODULE_AUTHOR("Ondrej Čerman");
 MODULE_LICENSE("GPL");
+MODULE_VERSION("0.1.4");
 
 // based on k10temp - GPL - (c) 2009 Clemens Ladisch <clemens@ladisch.de>
 //
