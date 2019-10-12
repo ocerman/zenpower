@@ -2,7 +2,7 @@
 Zenpower is Linux kernel driver for reading temperature, voltage(SVI2), current(SVI2) and power(SVI2) for AMD Zen family CPUs.
 
 Make sure that your Linux kernel have support for your CPUs as Zenpower is using kernel calls to read values from SMN.
-For AMD family 17h Model 70h (Ryzen 3000) CPUs you need kernel version 5.4rc1 or newer or kernel with this patch: https://patchwork.kernel.org/patch/11043277/
+For AMD family 17h Model 70h (Ryzen 3000) CPUs you need kernel version 5.3.4 or newer or kernel with this patch: https://patchwork.kernel.org/patch/11043277/
 
 ## Installation
 You can install this module via dkms.
