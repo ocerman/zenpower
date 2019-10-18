@@ -2,6 +2,8 @@ VERSION         := 0.1.4
 TARGET          := $(shell uname -r)
 DKMS_ROOT_PATH  := /usr/src/zenpower-$(VERSION)
 
+KERNEL_MODULES	:= /lib/modules/$(TARGET)
+
 ifneq ("","$(wildcard /usr/src/linux-headers-$(TARGET)/*)")
 # Ubuntu
 KERNEL_BUILD	:= /usr/src/linux-headers-$(TARGET)
