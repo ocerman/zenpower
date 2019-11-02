@@ -7,7 +7,7 @@
 MODULE_DESCRIPTION("AMD ZEN family CPU Sensors Driver");
 MODULE_AUTHOR("Ondrej Čerman");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1.4");
+MODULE_VERSION("0.1.5");
 
 // based on k10temp - GPL - (c) 2009 Clemens Ladisch <clemens@ladisch.de>
 //
@@ -51,6 +51,7 @@ struct zenpower_data {
 	u32 svi_soc_addr;
 	int temp_offset;
 	bool zen2;
+	bool kernel_smn_support;
 };
 
 struct tctl_offset {
@@ -67,6 +68,8 @@ static const struct tctl_offset tctl_offset_table[] = {
 	{ 0x17, "AMD Ryzen Threadripper 19", 27000 }, /* 19{00,20,50}X */
 	{ 0x17, "AMD Ryzen Threadripper 29", 27000 }, /* 29{20,50,70,90}[W]X */
 };
+
+static DEFINE_MUTEX(nb_smu_ind_mutex);
 
 static umode_t zenpower_is_visible(struct kobject *kobj,
 				struct attribute *attr, int index)
@@ -226,6 +229,7 @@ static ssize_t debug_data_show(struct device *dev,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 	u32 smndata;
 
+	len += sprintf(buf, "kernel_smn_support = %d\n", data->kernel_smn_support);
 	for (i = 0; i < ARRAY_SIZE(debug_addrs_arr); i++){
 		data->read_amdsmn_addr(data->pdev, debug_addrs_arr[i], &smndata);
 		len += sprintf(buf + len, "%08x = %08x\n", debug_addrs_arr[i], smndata);
@@ -310,9 +314,19 @@ static const struct attribute_group zenpower_group = {
 __ATTRIBUTE_GROUPS(zenpower);
 
 
-static void read_amdsmn_addr(struct pci_dev *pdev, u32 address, u32 *regval)
+static void kernel_smn_read(struct pci_dev *pdev, u32 address, u32 *regval)
 {
 	amd_smn_read(amd_pci_dev_to_node_id(pdev), address, regval);
+}
+
+// fallback method from k10temp
+// may return inaccurate results on multi-die chips
+static void nb_index_read(struct pci_dev *pdev, u32 address, u32 *regval)
+{
+	mutex_lock(&nb_smu_ind_mutex);
+	pci_bus_write_config_dword(pdev->bus, PCI_DEVFN(0, 0), 0x60, address);
+	pci_bus_read_config_dword(pdev->bus, PCI_DEVFN(0, 0), 0x64, regval);
+	mutex_unlock(&nb_smu_ind_mutex);
 }
 
 static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
@@ -329,7 +343,16 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	data->zen2 = false;
 	data->pdev = pdev;
-	data->read_amdsmn_addr = read_amdsmn_addr;
+	data->read_amdsmn_addr = nb_index_read;
+	data->kernel_smn_support = false;
+
+	for (id = amd_nb_misc_ids; id->vendor; id++) {
+		if (pdev->vendor == id->vendor && pdev->device == id->device) {
+			data->kernel_smn_support = true;
+			data->read_amdsmn_addr = kernel_smn_read;
+			break;
+		}
+	}
 
 	if (boot_cpu_data.x86 == 0x17 && boot_cpu_data.x86_model == 0x71) {
 		data->zen2 = true;
