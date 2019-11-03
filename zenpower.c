@@ -41,6 +41,8 @@ MODULE_VERSION("0.1.5");
 #define F17H_M01H_SVI                       0x0005A000
 #define F17H_M01H_SVI_TEL_PLANE0            F17H_M01H_SVI + 0xc
 #define F17H_M01H_SVI_TEL_PLANE1            F17H_M01H_SVI + 0x10
+#define F17H_M70H_CCD1_TEMP                 0x00059954
+#define F17H_M70H_CCD2_TEMP                 0x00059958
 
 #define F17H_TEMP_ADJUST_MASK               0x80000
 
@@ -52,6 +54,7 @@ struct zenpower_data {
 	int temp_offset;
 	bool zen2;
 	bool kernel_smn_support;
+	bool ccd1_visible, ccd2_visible;
 };
 
 struct tctl_offset {
@@ -74,6 +77,20 @@ static DEFINE_MUTEX(nb_smu_ind_mutex);
 static umode_t zenpower_is_visible(struct kobject *kobj,
 				struct attribute *attr, int index)
 {
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct zenpower_data *data = dev_get_drvdata(dev);
+
+	switch (index) {
+		case 17 ... 18: // CCD1 temperature
+			if (!data->ccd1_visible)
+				return 0;
+			break;
+		case 19 ... 20: // CCD2 temperature
+			if (!data->ccd2_visible)
+				return 0;
+			break;
+	}
+
 	return attr->mode;
 }
 
@@ -110,7 +127,7 @@ static u32 get_soc_current(u32 plane, bool zen2)
 	return  (fc * idd_cor) / 1000;
 }
 
-static unsigned int get_raw_temp(struct zenpower_data *data)
+static unsigned int get_ctl_temp(struct zenpower_data *data)
 {
 	unsigned int temp;
 	u32 regval;
@@ -122,11 +139,19 @@ static unsigned int get_raw_temp(struct zenpower_data *data)
 	return temp;
 }
 
+static unsigned int get_ccd_temp(struct zenpower_data *data, u32 ccd_addr)
+{
+	u32 regval;
+	data->read_amdsmn_addr(data->pdev, ccd_addr, &regval);
+
+	return (regval & 0xfff) * 125 - 305000;
+}
+
 static ssize_t temp1_input_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct zenpower_data *data = dev_get_drvdata(dev);
-	unsigned int temp = get_raw_temp(data);
+	unsigned int temp = get_ctl_temp(data);
 
 	if (temp > data->temp_offset)
 		temp -= data->temp_offset;
@@ -146,7 +171,25 @@ static ssize_t temp2_input_show(struct device *dev,
 				struct device_attribute *devattr, char *buf)
 {
 	struct zenpower_data *data = dev_get_drvdata(dev);
-	unsigned int temp = get_raw_temp(data);
+	unsigned int temp = get_ctl_temp(data);
+
+	return sprintf(buf, "%u\n", temp);
+}
+
+static ssize_t temp3_input_show(struct device *dev,
+				struct device_attribute *devattr, char *buf)
+{
+	struct zenpower_data *data = dev_get_drvdata(dev);
+	unsigned int temp = get_ccd_temp(data, F17H_M70H_CCD1_TEMP);
+
+	return sprintf(buf, "%u\n", temp);
+}
+
+static ssize_t temp4_input_show(struct device *dev,
+				struct device_attribute *devattr, char *buf)
+{
+	struct zenpower_data *data = dev_get_drvdata(dev);
+	unsigned int temp = get_ccd_temp(data, F17H_M70H_CCD2_TEMP);
 
 	return sprintf(buf, "%u\n", temp);
 }
@@ -219,7 +262,7 @@ static ssize_t power2_input_show(struct device *dev,
 
 int static debug_addrs_arr[] = {
 	F17H_M01H_SVI + 0x8, F17H_M01H_SVI_TEL_PLANE0, F17H_M01H_SVI_TEL_PLANE1,
-	0x000598BC, 0x0005994C, 0x00059954, 0x00059958, 0x0005995C
+	0x000598BC, 0x0005994C, F17H_M70H_CCD1_TEMP, F17H_M70H_CCD2_TEMP, 0x0005995C
 };
 
 static ssize_t debug_data_show(struct device *dev,
@@ -261,6 +304,10 @@ static ssize_t zen_label_show(struct device *dev,
 			return sprintf(buf, "Tdie\n");
 		case 32:
 			return sprintf(buf, "Tctl\n");
+		case 33:
+			return sprintf(buf, "Tccd1\n");
+		case 34:
+			return sprintf(buf, "Tccd2\n");
 	}
 
 	return 0;
@@ -283,7 +330,12 @@ static DEVICE_ATTR_RO(temp1_max);
 static SENSOR_DEVICE_ATTR(temp1_label, 0444, zen_label_show, NULL, 31);
 static DEVICE_ATTR_RO(temp2_input);
 static SENSOR_DEVICE_ATTR(temp2_label, 0444, zen_label_show, NULL, 32);
+static DEVICE_ATTR_RO(temp3_input);
+static SENSOR_DEVICE_ATTR(temp3_label, 0444, zen_label_show, NULL, 33);
+static DEVICE_ATTR_RO(temp4_input);
+static SENSOR_DEVICE_ATTR(temp4_label, 0444, zen_label_show, NULL, 34);
 static DEVICE_ATTR_RO(debug_data);
+
 
 static struct attribute *zenpower_attrs[] = {
 	&dev_attr_in1_input.attr,
@@ -303,6 +355,10 @@ static struct attribute *zenpower_attrs[] = {
 	&sensor_dev_attr_temp1_label.dev_attr.attr,
 	&dev_attr_temp2_input.attr,
 	&sensor_dev_attr_temp2_label.dev_attr.attr,
+	&dev_attr_temp3_input.attr,
+	&sensor_dev_attr_temp3_label.dev_attr.attr,
+	&dev_attr_temp4_input.attr,
+	&sensor_dev_attr_temp4_label.dev_attr.attr,
 	&dev_attr_debug_data.attr,
 	NULL
 };
@@ -335,6 +391,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct zenpower_data *data;
 	struct device *hwmon_dev;
 	bool swapped_addr = false;
+	u32 tmp;
 	int i;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
@@ -345,6 +402,8 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	data->pdev = pdev;
 	data->read_amdsmn_addr = nb_index_read;
 	data->kernel_smn_support = false;
+	data->ccd1_visible = false;
+	data->ccd2_visible = false;
 
 	for (id = amd_nb_misc_ids; id->vendor; id++) {
 		if (pdev->vendor == id->vendor && pdev->device == id->device) {
@@ -357,6 +416,16 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (boot_cpu_data.x86 == 0x17 && boot_cpu_data.x86_model == 0x71) {
 		data->zen2 = true;
 		swapped_addr = true;
+
+		data->read_amdsmn_addr(pdev, F17H_M70H_CCD1_TEMP, &tmp);
+		if ((tmp & 0xfff) > 0) {
+			data->ccd1_visible = true;
+		}
+
+		data->read_amdsmn_addr(pdev, F17H_M70H_CCD2_TEMP, &tmp);
+		if ((tmp & 0xfff) > 0) {
+			data->ccd2_visible = true;
+		}
 	}
 
 	#ifdef SWAP_CORE_SOC
