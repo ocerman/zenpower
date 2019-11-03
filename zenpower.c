@@ -54,6 +54,7 @@ struct zenpower_data {
 	int temp_offset;
 	bool zen2;
 	bool kernel_smn_support;
+	bool amps_visible;
 	bool ccd1_visible, ccd2_visible;
 };
 
@@ -81,6 +82,10 @@ static umode_t zenpower_is_visible(struct kobject *kobj,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 
 	switch (index) {
+		case 4 ... 11:  // amperage and wattage
+			if (!data->amps_visible)
+				return 0;
+			break;
 		case 17 ... 18: // CCD1 temperature
 			if (!data->ccd1_visible)
 				return 0;
@@ -402,6 +407,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	data->pdev = pdev;
 	data->read_amdsmn_addr = nb_index_read;
 	data->kernel_smn_support = false;
+	data->amps_visible = false;
 	data->ccd1_visible = false;
 	data->ccd2_visible = false;
 
@@ -413,18 +419,30 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		}
 	}
 
-	if (boot_cpu_data.x86 == 0x17 && boot_cpu_data.x86_model == 0x71) {
-		data->zen2 = true;
-		swapped_addr = true;
+	if (boot_cpu_data.x86 == 0x17) {
+		switch (boot_cpu_data.x86_model) {
+			case 0x1:  // Zen
+			case 0x8:  // Zen+
+			case 0x11: // Zen APU
+			case 0x18: // Zen+ APU
+				data->amps_visible = true;
+				break;
 
-		data->read_amdsmn_addr(pdev, F17H_M70H_CCD1_TEMP, &tmp);
-		if ((tmp & 0xfff) > 0) {
-			data->ccd1_visible = true;
-		}
+			case 0x71: // Zen2
+				data->amps_visible = true;
+				data->zen2 = true;
+				swapped_addr = true;
 
-		data->read_amdsmn_addr(pdev, F17H_M70H_CCD2_TEMP, &tmp);
-		if ((tmp & 0xfff) > 0) {
-			data->ccd2_visible = true;
+				data->read_amdsmn_addr(pdev, F17H_M70H_CCD1_TEMP, &tmp);
+				if ((tmp & 0xfff) > 0) {
+					data->ccd1_visible = true;
+				}
+
+				data->read_amdsmn_addr(pdev, F17H_M70H_CCD2_TEMP, &tmp);
+				if ((tmp & 0xfff) > 0) {
+					data->ccd2_visible = true;
+				}
+				break;
 		}
 	}
 
