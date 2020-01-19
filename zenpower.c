@@ -83,7 +83,7 @@ static umode_t zenpower_is_visible(struct kobject *kobj,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 
 	switch (index) {
-		case 4 ... 11:  // amperage and wattage
+		case 4 ... 11:  // current and power
 			if (!data->amps_visible)
 				return 0;
 			break;
