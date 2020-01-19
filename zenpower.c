@@ -51,6 +51,7 @@ struct zenpower_data {
 	void (*read_amdsmn_addr)(struct pci_dev *pdev, u32 address, u32 *regval);
 	u32 svi_core_addr;
 	u32 svi_soc_addr;
+	u16 node_id;
 	int temp_offset;
 	bool zen2;
 	bool kernel_smn_support;
@@ -267,7 +268,8 @@ static ssize_t power2_input_show(struct device *dev,
 
 int static debug_addrs_arr[] = {
 	F17H_M01H_SVI + 0x8, F17H_M01H_SVI_TEL_PLANE0, F17H_M01H_SVI_TEL_PLANE1,
-	0x000598BC, 0x0005994C, F17H_M70H_CCD1_TEMP, F17H_M70H_CCD2_TEMP, 0x0005995C
+	0x000598BC, 0x0005994C, F17H_M70H_CCD1_TEMP, F17H_M70H_CCD2_TEMP,
+	0x0005995C, 0x00059960
 };
 
 static ssize_t debug_data_show(struct device *dev,
@@ -278,6 +280,7 @@ static ssize_t debug_data_show(struct device *dev,
 	u32 smndata;
 
 	len += sprintf(buf, "kernel_smn_support = %d\n", data->kernel_smn_support);
+	len += sprintf(buf + len, "node_id = %d\n", data->node_id);
 	for (i = 0; i < ARRAY_SIZE(debug_addrs_arr); i++){
 		data->read_amdsmn_addr(data->pdev, debug_addrs_arr[i], &smndata);
 		len += sprintf(buf + len, "%08x = %08x\n", debug_addrs_arr[i], smndata);
@@ -410,6 +413,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	data->amps_visible = false;
 	data->ccd1_visible = false;
 	data->ccd2_visible = false;
+	data->node_id = 0;
 
 	for (id = amd_nb_misc_ids; id->vendor; id++) {
 		if (pdev->vendor == id->vendor && pdev->device == id->device) {
@@ -417,6 +421,10 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 			data->read_amdsmn_addr = kernel_smn_read;
 			break;
 		}
+	}
+
+	if (data->kernel_smn_support) {
+		data->node_id = amd_pci_dev_to_node_id(pdev);
 	}
 
 	if (boot_cpu_data.x86 == 0x17) {
