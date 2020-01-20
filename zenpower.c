@@ -1,5 +1,4 @@
 #include <linux/hwmon.h>
-#include <linux/hwmon-sysfs.h>
 #include <linux/module.h>
 #include <linux/pci.h>
 #include <asm/amd_nb.h>
@@ -76,28 +75,31 @@ static const struct tctl_offset tctl_offset_table[] = {
 
 static DEFINE_MUTEX(nb_smu_ind_mutex);
 
-static umode_t zenpower_is_visible(struct kobject *kobj,
-				struct attribute *attr, int index)
+static umode_t zenpower_is_visible(const void *rdata,
+									enum hwmon_sensor_types type,
+									u32 attr, int channel)
 {
-	struct device *dev = container_of(kobj, struct device, kobj);
-	struct zenpower_data *data = dev_get_drvdata(dev);
+	const struct zenpower_data *data = rdata;
 
-	switch (index) {
-		case 4 ... 11:  // current and power
-			if (!data->amps_visible)
+	switch (type) {
+		case hwmon_temp:
+			if (data->ccd1_visible == false && channel == 2) // Tccd1
+				return 0;
+			if (data->ccd2_visible == false && channel == 3) // Tccd2
 				return 0;
 			break;
-		case 17 ... 18: // CCD1 temperature
-			if (!data->ccd1_visible)
+
+		case hwmon_curr:
+		case hwmon_power:
+			if (data->amps_visible == false)
 				return 0;
 			break;
-		case 19 ... 20: // CCD2 temperature
-			if (!data->ccd2_visible)
-				return 0;
+
+		default:
 			break;
 	}
 
-	return attr->mode;
+	return 0444;
 }
 
 static u32 plane_to_vcc(u32 p)
@@ -153,122 +155,6 @@ static unsigned int get_ccd_temp(struct zenpower_data *data, u32 ccd_addr)
 	return (regval & 0xfff) * 125 - 305000;
 }
 
-static ssize_t temp1_input_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct zenpower_data *data = dev_get_drvdata(dev);
-	unsigned int temp = get_ctl_temp(data);
-
-	if (temp > data->temp_offset)
-		temp -= data->temp_offset;
-	else
-		temp = 0;
-
-	return sprintf(buf, "%u\n", temp);
-}
-
-static ssize_t temp1_max_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	// source: https://www.amd.com/en/products/cpu/amd-ryzen-7-3700x
-	//         other cpus have also same same* Tmax on AMD website
-	//         * = note: AMD list on website max of Tctl, not max of Tdie
-	return sprintf(buf, "%d\n", 95 * 1000);
-}
-
-static ssize_t temp2_input_show(struct device *dev,
-				struct device_attribute *devattr, char *buf)
-{
-	struct zenpower_data *data = dev_get_drvdata(dev);
-	unsigned int temp = get_ctl_temp(data);
-
-	return sprintf(buf, "%u\n", temp);
-}
-
-static ssize_t temp3_input_show(struct device *dev,
-				struct device_attribute *devattr, char *buf)
-{
-	struct zenpower_data *data = dev_get_drvdata(dev);
-	unsigned int temp = get_ccd_temp(data, F17H_M70H_CCD1_TEMP);
-
-	return sprintf(buf, "%u\n", temp);
-}
-
-static ssize_t temp4_input_show(struct device *dev,
-				struct device_attribute *devattr, char *buf)
-{
-	struct zenpower_data *data = dev_get_drvdata(dev);
-	unsigned int temp = get_ccd_temp(data, F17H_M70H_CCD2_TEMP);
-
-	return sprintf(buf, "%u\n", temp);
-}
-
-static ssize_t in1_input_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct zenpower_data *data = dev_get_drvdata(dev);
-	u32 plane, vcc;
-
-	data->read_amdsmn_addr(data->pdev, data->svi_core_addr, &plane);
-	vcc = plane_to_vcc(plane);
-
-	return sprintf(buf, "%d\n", vcc);
-}
-
-static ssize_t in2_input_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct zenpower_data *data = dev_get_drvdata(dev);
-	u32 plane, vcc;
-
-	data->read_amdsmn_addr(data->pdev, data->svi_soc_addr, &plane);
-	vcc = plane_to_vcc(plane);
-
-	return sprintf(buf, "%d\n", vcc);
-}
-
-static ssize_t curr1_input_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct zenpower_data *data = dev_get_drvdata(dev);
-	u32 plane;
-
-	data->read_amdsmn_addr(data->pdev, data->svi_core_addr, &plane);
-	return sprintf(buf, "%d\n", get_core_current(plane, data->zen2));
-}
-
-static ssize_t curr2_input_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct zenpower_data *data = dev_get_drvdata(dev);
-	u32 plane;
-
-	data->read_amdsmn_addr(data->pdev, data->svi_soc_addr, &plane);
-	return sprintf(buf, "%d\n", get_soc_current(plane, data->zen2));
-}
-
-static ssize_t power1_input_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct zenpower_data *data = dev_get_drvdata(dev);
-	u32 plane;
-
-	data->read_amdsmn_addr(data->pdev, data->svi_core_addr, &plane);
-	return sprintf(buf, "%d\n",
-		get_core_current(plane, data->zen2) * plane_to_vcc(plane));
-}
-
-static ssize_t power2_input_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct zenpower_data *data = dev_get_drvdata(dev);
-	u32 plane;
-
-	data->read_amdsmn_addr(data->pdev, data->svi_soc_addr, &plane);
-	return sprintf(buf, "%d\n",
-		get_soc_current(plane, data->zen2) * plane_to_vcc(plane));
-}
-
 int static debug_addrs_arr[] = {
 	F17H_M01H_SVI + 0x8, F17H_M01H_SVI_TEL_PLANE0, F17H_M01H_SVI_TEL_PLANE1,
 	0x000598BC, 0x0005994C, F17H_M70H_CCD1_TEMP, F17H_M70H_CCD2_TEMP,
@@ -292,94 +178,139 @@ static ssize_t debug_data_show(struct device *dev,
 	return len;
 }
 
-
-static ssize_t zen_label_show(struct device *dev,
-				struct device_attribute *devattr, char *buf)
+static int zenpower_read(struct device *dev, enum hwmon_sensor_types type,
+			u32 attr, int channel, long *val)
 {
-	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	struct zenpower_data *data = dev_get_drvdata(dev);
+	u32 plane;
 
-	switch (attr->index){
-		case 1:
-			return sprintf(buf, "SVI2_Core\n");
-		case 2:
-			return sprintf(buf, "SVI2_SoC\n");
-		case 11:
-			return sprintf(buf, "SVI2_C_Core\n");
-		case 12:
-			return sprintf(buf, "SVI2_C_SoC\n");
-		case 21:
-			return sprintf(buf, "SVI2_P_Core\n");
-		case 22:
-			return sprintf(buf, "SVI2_P_SoC\n");
-		case 31:
-			return sprintf(buf, "Tdie\n");
-		case 32:
-			return sprintf(buf, "Tctl\n");
-		case 33:
-			return sprintf(buf, "Tccd1\n");
-		case 34:
-			return sprintf(buf, "Tccd2\n");
+	switch (type) {
+
+		// Temperatures
+		case hwmon_temp:
+			switch (attr) {
+				case hwmon_temp_input:
+					switch (channel) {
+						case 0: // Tdie
+							*val = get_ctl_temp(data) - data->temp_offset;
+							break;
+						case 1: // Tctl
+							*val = get_ctl_temp(data);
+							break;
+						case 2: // Tccd1
+							*val = get_ccd_temp(data, F17H_M70H_CCD1_TEMP);
+							break;
+						case 3: // Tccd2
+							*val = get_ccd_temp(data, F17H_M70H_CCD2_TEMP);
+							break;
+						default:
+							return -EOPNOTSUPP;
+					}
+					break;
+
+				case hwmon_temp_max: // Tdie max
+					// source: https://www.amd.com/en/products/cpu/amd-ryzen-7-3700x
+					//         other cpus have also same* Tmax on AMD website
+					//         * = when taking into consideration a tctl offset
+					*val = 95 * 1000;
+					break;
+
+				default:
+					return -EOPNOTSUPP;
+			}
+			break;
+
+		// Voltage / Power / Current
+		case hwmon_in:
+		case hwmon_curr:
+		case hwmon_power:
+			if (attr != hwmon_in_input && attr != hwmon_curr_input &&
+				attr != hwmon_power_input) {
+				return -EOPNOTSUPP;
+			}
+
+			switch (channel) {
+				case 0: // Core SVI2
+					data->read_amdsmn_addr(data->pdev, data->svi_core_addr, &plane);
+					break;
+				case 1: // SoC SVI2
+					data->read_amdsmn_addr(data->pdev, data->svi_soc_addr, &plane);
+					break;
+				default:
+					return -EOPNOTSUPP;
+			}
+
+			switch (type) {
+				case hwmon_in:
+					*val = plane_to_vcc(plane);
+					break;
+				case hwmon_curr:
+					*val = (channel == 0) ?
+						get_core_current(plane, data->zen2):
+						get_soc_current(plane, data->zen2);
+					break;
+				case hwmon_power:
+					*val = (channel == 0) ?
+						get_core_current(plane, data->zen2) * plane_to_vcc(plane):
+						get_soc_current(plane, data->zen2) * plane_to_vcc(plane);
+					break;
+				default:
+					break;
+			}
+			break;
+
+		default:
+			return -EOPNOTSUPP;
 	}
 
 	return 0;
 }
 
-static DEVICE_ATTR_RO(in1_input);
-static SENSOR_DEVICE_ATTR(in1_label, 0444, zen_label_show, NULL, 1);
-static DEVICE_ATTR_RO(in2_input);
-static SENSOR_DEVICE_ATTR(in2_label, 0444, zen_label_show, NULL, 2);
-static DEVICE_ATTR_RO(curr1_input);
-static SENSOR_DEVICE_ATTR(curr1_label, 0444, zen_label_show, NULL, 11);
-static DEVICE_ATTR_RO(curr2_input);
-static SENSOR_DEVICE_ATTR(curr2_label, 0444, zen_label_show, NULL, 12);
-static DEVICE_ATTR_RO(power1_input);
-static SENSOR_DEVICE_ATTR(power1_label, 0444, zen_label_show, NULL, 21);
-static DEVICE_ATTR_RO(power2_input);
-static SENSOR_DEVICE_ATTR(power2_label, 0444, zen_label_show, NULL, 22);
-static DEVICE_ATTR_RO(temp1_input);
-static DEVICE_ATTR_RO(temp1_max);
-static SENSOR_DEVICE_ATTR(temp1_label, 0444, zen_label_show, NULL, 31);
-static DEVICE_ATTR_RO(temp2_input);
-static SENSOR_DEVICE_ATTR(temp2_label, 0444, zen_label_show, NULL, 32);
-static DEVICE_ATTR_RO(temp3_input);
-static SENSOR_DEVICE_ATTR(temp3_label, 0444, zen_label_show, NULL, 33);
-static DEVICE_ATTR_RO(temp4_input);
-static SENSOR_DEVICE_ATTR(temp4_label, 0444, zen_label_show, NULL, 34);
-static DEVICE_ATTR_RO(debug_data);
-
-
-static struct attribute *zenpower_attrs[] = {
-	&dev_attr_in1_input.attr,
-	&sensor_dev_attr_in1_label.dev_attr.attr,
-	&dev_attr_in2_input.attr,
-	&sensor_dev_attr_in2_label.dev_attr.attr,
-	&dev_attr_curr1_input.attr,
-	&sensor_dev_attr_curr1_label.dev_attr.attr,
-	&dev_attr_curr2_input.attr,
-	&sensor_dev_attr_curr2_label.dev_attr.attr,
-	&dev_attr_power1_input.attr,
-	&sensor_dev_attr_power1_label.dev_attr.attr,
-	&dev_attr_power2_input.attr,
-	&sensor_dev_attr_power2_label.dev_attr.attr,
-	&dev_attr_temp1_input.attr,
-	&dev_attr_temp1_max.attr,
-	&sensor_dev_attr_temp1_label.dev_attr.attr,
-	&dev_attr_temp2_input.attr,
-	&sensor_dev_attr_temp2_label.dev_attr.attr,
-	&dev_attr_temp3_input.attr,
-	&sensor_dev_attr_temp3_label.dev_attr.attr,
-	&dev_attr_temp4_input.attr,
-	&sensor_dev_attr_temp4_label.dev_attr.attr,
-	&dev_attr_debug_data.attr,
-	NULL
+static const char *zenpower_temp_label[] = {
+	"Tdie",
+	"Tctl",
+	"Tccd1",
+	"Tccd2",
 };
 
-static const struct attribute_group zenpower_group = {
-	.attrs = zenpower_attrs,
-	.is_visible = zenpower_is_visible,
+static const char *zenpower_in_label[] = {
+	"SVI2_Core",
+	"SVI2_SoC",
 };
-__ATTRIBUTE_GROUPS(zenpower);
 
+static const char *zenpower_curr_label[] = {
+	"SVI2_C_Core",
+	"SVI2_C_SoC",
+};
+
+static const char *zenpower_power_label[] = {
+	"SVI2_P_Core",
+	"SVI2_P_SoC",
+};
+
+static int zenpower_read_labels(struct device *dev,
+				enum hwmon_sensor_types type, u32 attr,
+				int channel, const char **str)
+{
+	switch (type) {
+		case hwmon_temp:
+			*str = zenpower_temp_label[channel];
+			break;
+		case hwmon_in:
+			*str = zenpower_in_label[channel];
+			break;
+		case hwmon_curr:
+			*str = zenpower_curr_label[channel];
+			break;
+		case hwmon_power:
+			*str = zenpower_power_label[channel];
+			break;
+		default:
+			return -EOPNOTSUPP;
+	}
+
+	return 0;
+}
 
 static void kernel_smn_read(struct pci_dev *pdev, u32 address, u32 *regval)
 {
@@ -396,6 +327,51 @@ static void nb_index_read(struct pci_dev *pdev, u32 address, u32 *regval)
 	mutex_unlock(&nb_smu_ind_mutex);
 }
 
+static const struct hwmon_channel_info *zenpower_info[] = {
+	HWMON_CHANNEL_INFO(temp,
+			HWMON_T_INPUT | HWMON_T_MAX | HWMON_T_LABEL,	// Tdie
+			HWMON_T_INPUT | HWMON_T_LABEL,					// Tctl
+			HWMON_T_INPUT | HWMON_T_LABEL,					// Tccd1
+			HWMON_T_INPUT | HWMON_T_LABEL),					// Tccd2
+
+	HWMON_CHANNEL_INFO(in,
+			HWMON_I_INPUT | HWMON_I_LABEL,		// Core Voltage (SVI2)
+			HWMON_I_INPUT | HWMON_I_LABEL),		// SoC Voltage (SVI2)
+
+	HWMON_CHANNEL_INFO(curr,
+			HWMON_C_INPUT | HWMON_C_LABEL,		// Core Current (SVI2)
+			HWMON_C_INPUT | HWMON_C_LABEL),		// SoC Current (SVI2)
+
+	HWMON_CHANNEL_INFO(power,
+			HWMON_C_INPUT | HWMON_C_LABEL,		// Core Power (SVI2)
+			HWMON_C_INPUT | HWMON_C_LABEL),		// SoC Power (SVI2)
+
+	NULL
+};
+
+static const struct hwmon_ops zenpower_hwmon_ops = {
+	.is_visible = zenpower_is_visible,
+	.read = zenpower_read,
+	.read_string = zenpower_read_labels,
+};
+
+static const struct hwmon_chip_info zenpower_chip_info = {
+	.ops = &zenpower_hwmon_ops,
+	.info = zenpower_info,
+};
+
+static DEVICE_ATTR_RO(debug_data);
+
+static struct attribute *zenpower_attrs[] = {
+	&dev_attr_debug_data.attr,
+	NULL
+};
+
+static const struct attribute_group zenpower_group = {
+	.attrs = zenpower_attrs
+};
+__ATTRIBUTE_GROUPS(zenpower);
+
 static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	struct device *dev = &pdev->dev;
@@ -411,6 +387,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	data->zen2 = false;
 	data->pdev = pdev;
+	data->temp_offset = 0;
 	data->read_amdsmn_addr = nb_index_read;
 	data->kernel_smn_support = false;
 	data->amps_visible = false;
@@ -480,7 +457,10 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		}
 	}
 
-	hwmon_dev = devm_hwmon_device_register_with_groups(dev, "zenpower", data, zenpower_groups);
+	hwmon_dev = devm_hwmon_device_register_with_info(
+		dev, "zenpower", data, &zenpower_chip_info, zenpower_groups
+	);
+
 	return PTR_ERR_OR_ZERO(hwmon_dev);
 }
 
