@@ -170,7 +170,10 @@ static ssize_t temp1_input_show(struct device *dev,
 static ssize_t temp1_max_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d\n", 70 * 1000);
+	// source: https://www.amd.com/en/products/cpu/amd-ryzen-7-3700x
+	//         other cpus have also same same* Tmax on AMD website
+	//         * = note: AMD list on website max of Tctl, not max of Tdie
+	return sprintf(buf, "%d\n", 95 * 1000);
 }
 
 static ssize_t temp2_input_show(struct device *dev,
