@@ -6,7 +6,7 @@
 MODULE_DESCRIPTION("AMD ZEN family CPU Sensors Driver");
 MODULE_AUTHOR("Ondrej Čerman");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1.5");
+MODULE_VERSION("0.1.6");
 
 // based on k10temp - GPL - (c) 2009 Clemens Ladisch <clemens@ladisch.de>
 //
