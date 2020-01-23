@@ -95,6 +95,10 @@ static umode_t zenpower_is_visible(const void *rdata,
 				return 0;
 			break;
 
+		case hwmon_in:
+			if (channel == 0)	// fake item to align different indexing,
+				return 0;		// see note at zenpower_info
+
 		default:
 			break;
 	}
@@ -220,8 +224,13 @@ static int zenpower_read(struct device *dev, enum hwmon_sensor_types type,
 			}
 			break;
 
-		// Voltage / Power / Current
+		// Voltage
 		case hwmon_in:
+			if (channel == 0)
+				return -EOPNOTSUPP;
+			channel -= 1;					// hwmon_in have different indexing,
+			__attribute__ ((fallthrough));	// see note at zenpower_info
+		// Power / Current
 		case hwmon_curr:
 		case hwmon_power:
 			if (attr != hwmon_in_input && attr != hwmon_curr_input &&
@@ -274,6 +283,7 @@ static const char *zenpower_temp_label[] = {
 };
 
 static const char *zenpower_in_label[] = {
+	"",
 	"SVI2_Core",
 	"SVI2_SoC",
 };
@@ -335,6 +345,10 @@ static const struct hwmon_channel_info *zenpower_info[] = {
 			HWMON_T_INPUT | HWMON_T_LABEL),					// Tccd2
 
 	HWMON_CHANNEL_INFO(in,
+			HWMON_I_LABEL,	// everything is using 1 based indexing except
+							// hwmin_in - that is using 0 based indexing
+							// let's make fake item so corresponding SVI2 data is
+							// associated with same index
 			HWMON_I_INPUT | HWMON_I_LABEL,		// Core Voltage (SVI2)
 			HWMON_I_INPUT | HWMON_I_LABEL),		// SoC Voltage (SVI2)
 
@@ -343,8 +357,8 @@ static const struct hwmon_channel_info *zenpower_info[] = {
 			HWMON_C_INPUT | HWMON_C_LABEL),		// SoC Current (SVI2)
 
 	HWMON_CHANNEL_INFO(power,
-			HWMON_C_INPUT | HWMON_C_LABEL,		// Core Power (SVI2)
-			HWMON_C_INPUT | HWMON_C_LABEL),		// SoC Power (SVI2)
+			HWMON_P_INPUT | HWMON_P_LABEL,		// Core Power (SVI2)
+			HWMON_P_INPUT | HWMON_P_LABEL),		// SoC Power (SVI2)
 
 	NULL
 };
