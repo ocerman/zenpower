@@ -228,8 +228,8 @@ static int zenpower_read(struct device *dev, enum hwmon_sensor_types type,
 		case hwmon_in:
 			if (channel == 0)
 				return -EOPNOTSUPP;
-			channel -= 1;					// hwmon_in have different indexing,
-			__attribute__ ((fallthrough));	// see note at zenpower_info
+			channel -= 1;	// hwmon_in have different indexing, see note at zenpower_info
+							// fall through
 		// Power / Current
 		case hwmon_curr:
 		case hwmon_power:
