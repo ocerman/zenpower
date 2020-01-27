@@ -45,6 +45,11 @@ MODULE_VERSION("0.1.6");
 
 #define F17H_TEMP_ADJUST_MASK               0x80000
 
+/* CPUID function 0x80000001, ebx */
+#define CPUID_PKGTYPE_MASK	0xf0000000
+#define CPUID_PKGTYPE_SP3	0x40000000 // https://www.sandpile.org/x86/cpuid.htm
+#define CPUID_PKGTYPE_SP3r2	0x70000000
+
 struct zenpower_data {
 	struct pci_dev *pdev;
 	void (*read_amdsmn_addr)(struct pci_dev *pdev, u32 address, u32 *regval);
@@ -93,11 +98,20 @@ static umode_t zenpower_is_visible(const void *rdata,
 		case hwmon_power:
 			if (data->amps_visible == false)
 				return 0;
+			if (channel == 0 && data->svi_core_addr == 0)
+				return 0;
+			if (channel == 1 && data->svi_soc_addr == 0)
+				return 0;
 			break;
 
 		case hwmon_in:
 			if (channel == 0)	// fake item to align different indexing,
 				return 0;		// see note at zenpower_info
+			if (channel == 1 && data->svi_core_addr == 0)
+				return 0;
+			if (channel == 2 && data->svi_soc_addr == 0)
+				return 0;
+			break;
 
 		default:
 			break;
@@ -392,7 +406,8 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct zenpower_data *data;
 	struct device *hwmon_dev;
 	bool swapped_addr = false;
-	u32 tmp;
+	bool sp3_chip = false; // SP3 cpus = threadripper / epyc
+	u32 val, primary_plane, secondary_plane;
 	int i;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
@@ -404,6 +419,8 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	data->temp_offset = 0;
 	data->read_amdsmn_addr = nb_index_read;
 	data->kernel_smn_support = false;
+	data->svi_core_addr = false;
+	data->svi_soc_addr = false;
 	data->amps_visible = false;
 	data->ccd1_visible = false;
 	data->ccd2_visible = false;
@@ -428,20 +445,28 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 			case 0x11: // Zen APU
 			case 0x18: // Zen+ APU
 				data->amps_visible = true;
+
+				val = cpuid_ebx(0x80000001) & CPUID_PKGTYPE_MASK; // package type
+				if (val == CPUID_PKGTYPE_SP3 || val == CPUID_PKGTYPE_SP3r2) {
+					sp3_chip = true;
+				}
 				break;
 
-			case 0x71: // Zen2
+			case 0x31: // Zen2 Threadripper/EPYC
+				sp3_chip = true; // fall through
+
+			case 0x71: // Zen2 Ryzen
 				data->amps_visible = true;
 				data->zen2 = true;
 				swapped_addr = true;
 
-				data->read_amdsmn_addr(pdev, F17H_M70H_CCD1_TEMP, &tmp);
-				if ((tmp & 0xfff) > 0) {
+				data->read_amdsmn_addr(pdev, F17H_M70H_CCD1_TEMP, &val);
+				if ((val & 0xfff) > 0) {
 					data->ccd1_visible = true;
 				}
 
-				data->read_amdsmn_addr(pdev, F17H_M70H_CCD2_TEMP, &tmp);
-				if ((tmp & 0xfff) > 0) {
+				data->read_amdsmn_addr(pdev, F17H_M70H_CCD2_TEMP, &val);
+				if ((val & 0xfff) > 0) {
 					data->ccd2_visible = true;
 				}
 				break;
@@ -452,13 +477,33 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		swapped_addr = !swapped_addr;
 	#endif
 
-	if (swapped_addr) {
-		data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE1;
-		data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE0;
-	}
-	else {
-		data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
-		data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE1;
+	// SVI2 values seems to be only in node #0 or #1
+	if (data->node_id == 0 || data->node_id == 1){
+
+		if (swapped_addr) {
+			primary_plane = F17H_M01H_SVI_TEL_PLANE1;
+			secondary_plane = F17H_M01H_SVI_TEL_PLANE0;
+		}
+		else {
+			primary_plane = F17H_M01H_SVI_TEL_PLANE0;
+			secondary_plane = F17H_M01H_SVI_TEL_PLANE1;
+		}
+
+		data->read_amdsmn_addr(pdev, primary_plane, &val);
+		if (val != 0) {
+			if (sp3_chip){
+				if (data->node_id == 0) {
+					data->svi_soc_addr = primary_plane;
+				}
+				if (data->node_id == 1) {
+					data->svi_core_addr = primary_plane;
+				}
+			}
+			else if (data->node_id == 0) {
+				data->svi_core_addr = primary_plane;
+				data->svi_soc_addr = secondary_plane;
+			}
+		}
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tctl_offset_table); i++) {
