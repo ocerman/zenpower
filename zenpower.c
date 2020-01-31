@@ -52,7 +52,7 @@ MODULE_VERSION("0.1.6");
 
 struct zenpower_data {
 	struct pci_dev *pdev;
-	void (*read_amdsmn_addr)(struct pci_dev *pdev, u32 address, u32 *regval);
+	void (*read_amdsmn_addr)(struct pci_dev *pdev, u16 node_id, u32 address, u32 *regval);
 	u32 svi_core_addr;
 	u32 svi_soc_addr;
 	u16 node_id;
@@ -158,7 +158,8 @@ static unsigned int get_ctl_temp(struct zenpower_data *data)
 	unsigned int temp;
 	u32 regval;
 
-	data->read_amdsmn_addr(data->pdev, F17H_M01H_REPORTED_TEMP_CTRL, &regval);
+	data->read_amdsmn_addr(data->pdev, data->node_id,
+							F17H_M01H_REPORTED_TEMP_CTRL, &regval);
 	temp = (regval >> 21) * 125;
 	if (regval & F17H_TEMP_ADJUST_MASK)
 		temp -= 49000;
@@ -168,7 +169,7 @@ static unsigned int get_ctl_temp(struct zenpower_data *data)
 static unsigned int get_ccd_temp(struct zenpower_data *data, u32 ccd_addr)
 {
 	u32 regval;
-	data->read_amdsmn_addr(data->pdev, ccd_addr, &regval);
+	data->read_amdsmn_addr(data->pdev, data->node_id, ccd_addr, &regval);
 
 	return (regval & 0xfff) * 125 - 305000;
 }
@@ -189,7 +190,7 @@ static ssize_t debug_data_show(struct device *dev,
 	len += sprintf(buf, "kernel_smn_support = %d\n", data->kernel_smn_support);
 	len += sprintf(buf + len, "node_id = %d\n", data->node_id);
 	for (i = 0; i < ARRAY_SIZE(debug_addrs_arr); i++){
-		data->read_amdsmn_addr(data->pdev, debug_addrs_arr[i], &smndata);
+		data->read_amdsmn_addr(data->pdev, data->node_id, debug_addrs_arr[i], &smndata);
 		len += sprintf(buf + len, "%08x = %08x\n", debug_addrs_arr[i], smndata);
 	}
 
@@ -254,10 +255,12 @@ static int zenpower_read(struct device *dev, enum hwmon_sensor_types type,
 
 			switch (channel) {
 				case 0: // Core SVI2
-					data->read_amdsmn_addr(data->pdev, data->svi_core_addr, &plane);
+					data->read_amdsmn_addr(data->pdev, data->node_id,
+											data->svi_core_addr, &plane);
 					break;
 				case 1: // SoC SVI2
-					data->read_amdsmn_addr(data->pdev, data->svi_soc_addr, &plane);
+					data->read_amdsmn_addr(data->pdev, data->node_id,
+											data->svi_soc_addr, &plane);
 					break;
 				default:
 					return -EOPNOTSUPP;
@@ -336,14 +339,14 @@ static int zenpower_read_labels(struct device *dev,
 	return 0;
 }
 
-static void kernel_smn_read(struct pci_dev *pdev, u32 address, u32 *regval)
+static void kernel_smn_read(struct pci_dev *pdev, u16 node_id, u32 address, u32 *regval)
 {
-	amd_smn_read(amd_pci_dev_to_node_id(pdev), address, regval);
+	amd_smn_read(node_id, address, regval);
 }
 
 // fallback method from k10temp
 // may return inaccurate results on multi-die chips
-static void nb_index_read(struct pci_dev *pdev, u32 address, u32 *regval)
+static void nb_index_read(struct pci_dev *pdev, u16 node_id, u32 address, u32 *regval)
 {
 	mutex_lock(&nb_smu_ind_mutex);
 	pci_bus_write_config_dword(pdev->bus, PCI_DEVFN(0, 0), 0x60, address);
@@ -460,12 +463,14 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 				data->zen2 = true;
 				swapped_addr = true;
 
-				data->read_amdsmn_addr(pdev, F17H_M70H_CCD1_TEMP, &val);
+				data->read_amdsmn_addr(pdev, data->node_id,
+										F17H_M70H_CCD1_TEMP, &val);
 				if ((val & 0xfff) > 0) {
 					data->ccd1_visible = true;
 				}
 
-				data->read_amdsmn_addr(pdev, F17H_M70H_CCD2_TEMP, &val);
+				data->read_amdsmn_addr(pdev, data->node_id,
+										F17H_M70H_CCD2_TEMP, &val);
 				if ((val & 0xfff) > 0) {
 					data->ccd2_visible = true;
 				}
@@ -489,7 +494,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 			secondary_plane = F17H_M01H_SVI_TEL_PLANE1;
 		}
 
-		data->read_amdsmn_addr(pdev, primary_plane, &val);
+		data->read_amdsmn_addr(pdev, data->node_id, primary_plane, &val);
 		if (val != 0) {
 			if (sp3_chip){
 				if (data->node_id == 0) {
