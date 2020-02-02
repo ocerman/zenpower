@@ -1,3 +1,35 @@
+/*
+ * Zenpower - Driver for reading temperature, voltage, current and power for AMD 17h CPUs
+ *
+ * Copyright (c) 2018-2020 Ondrej Čerman
+ *
+ * This driver is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This driver is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this driver; if not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+/*
+ * based on k10temp by Clemens Ladisch
+ *
+ * Docs:
+ *  - https://www.kernel.org/doc/Documentation/hwmon/hwmon-kernel-api.txt
+ *  - https://developer.amd.com/wp-content/resources/56255_3_03.PDF
+ *
+ * Sources:
+ *  - Temp monitoring is from k10temp
+ *  - SVI address and voltage formula is from LibreHardwareMonitor
+ *  - Current formulas and CCD temp addresses were discovered experimentally
+ */
+
 #include <linux/hwmon.h>
 #include <linux/module.h>
 #include <linux/pci.h>
@@ -6,18 +38,7 @@
 MODULE_DESCRIPTION("AMD ZEN family CPU Sensors Driver");
 MODULE_AUTHOR("Ondrej Čerman");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1.6");
-
-// based on k10temp - GPL - (c) 2009 Clemens Ladisch <clemens@ladisch.de>
-//
-// Docs:
-//  - https://www.kernel.org/doc/Documentation/hwmon/hwmon-kernel-api.txt
-//  - https://developer.amd.com/wp-content/resources/56255_3_03.PDF
-//
-// Sources:
-//  - Temp monitoring is from k10temp
-//  - SVI address and voltage formula is from LibreHardwareMonitor
-//  - Current formulas were discovered experimentally
+MODULE_VERSION("0.1.7");
 
 
 #ifndef PCI_DEVICE_ID_AMD_17H_DF_F3
@@ -363,7 +384,7 @@ static const struct hwmon_channel_info *zenpower_info[] = {
 
 	HWMON_CHANNEL_INFO(in,
 			HWMON_I_LABEL,	// everything is using 1 based indexing except
-							// hwmin_in - that is using 0 based indexing
+							// hwmon_in - that is using 0 based indexing
 							// let's make fake item so corresponding SVI2 data is
 							// associated with same index
 			HWMON_I_INPUT | HWMON_I_LABEL,		// Core Voltage (SVI2)
