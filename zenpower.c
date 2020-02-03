@@ -66,6 +66,16 @@ MODULE_VERSION("0.1.7");
 
 #define F17H_TEMP_ADJUST_MASK               0x80000
 
+#ifndef HWMON_CHANNEL_INFO
+#define HWMON_CHANNEL_INFO(stype, ...)	\
+	(&(struct hwmon_channel_info) {		\
+		.type = hwmon_##stype,			\
+		.config = (u32 []) {			\
+			__VA_ARGS__, 0				\
+		}								\
+	})
+#endif
+
 /* CPUID function 0x80000001, ebx */
 #define CPUID_PKGTYPE_MASK	0xf0000000
 #define CPUID_PKGTYPE_SP3	0x40000000 // https://www.sandpile.org/x86/cpuid.htm
