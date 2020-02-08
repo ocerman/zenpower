@@ -38,7 +38,7 @@
 MODULE_DESCRIPTION("AMD ZEN family CPU Sensors Driver");
 MODULE_AUTHOR("Ondrej Čerman");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1.7");
+MODULE_VERSION("0.1.8");
 
 
 #ifndef PCI_DEVICE_ID_AMD_17H_DF_F3
@@ -61,8 +61,7 @@ MODULE_VERSION("0.1.7");
 #define F17H_M01H_SVI                       0x0005A000
 #define F17H_M01H_SVI_TEL_PLANE0            F17H_M01H_SVI + 0xc
 #define F17H_M01H_SVI_TEL_PLANE1            F17H_M01H_SVI + 0x10
-#define F17H_M70H_CCD1_TEMP                 0x00059954
-#define F17H_M70H_CCD2_TEMP                 0x00059958
+#define F17H_M70H_CCD_TEMP(x)               (0x00059954 + ((x) * 4))
 
 #define F17H_TEMP_ADJUST_MASK               0x80000
 
@@ -91,7 +90,7 @@ struct zenpower_data {
 	bool zen2;
 	bool kernel_smn_support;
 	bool amps_visible;
-	bool ccd1_visible, ccd2_visible;
+	bool ccd_visible[8];
 };
 
 struct tctl_offset {
@@ -119,9 +118,7 @@ static umode_t zenpower_is_visible(const void *rdata,
 
 	switch (type) {
 		case hwmon_temp:
-			if (data->ccd1_visible == false && channel == 2) // Tccd1
-				return 0;
-			if (data->ccd2_visible == false && channel == 3) // Tccd2
+			if (channel >= 2 && data->ccd_visible[channel-2] == false) // Tccd1-8
 				return 0;
 			break;
 
@@ -207,8 +204,9 @@ static unsigned int get_ccd_temp(struct zenpower_data *data, u32 ccd_addr)
 
 int static debug_addrs_arr[] = {
 	F17H_M01H_SVI + 0x8, F17H_M01H_SVI_TEL_PLANE0, F17H_M01H_SVI_TEL_PLANE1,
-	0x000598BC, 0x0005994C, F17H_M70H_CCD1_TEMP, F17H_M70H_CCD2_TEMP,
-	0x0005995C, 0x00059960
+	0x000598BC, 0x0005994C, F17H_M70H_CCD_TEMP(0), F17H_M70H_CCD_TEMP(1),
+	F17H_M70H_CCD_TEMP(2), F17H_M70H_CCD_TEMP(3), F17H_M70H_CCD_TEMP(4),
+	F17H_M70H_CCD_TEMP(5), F17H_M70H_CCD_TEMP(6), F17H_M70H_CCD_TEMP(7)
 };
 
 static ssize_t debug_data_show(struct device *dev,
@@ -247,11 +245,8 @@ static int zenpower_read(struct device *dev, enum hwmon_sensor_types type,
 						case 1: // Tctl
 							*val = get_ctl_temp(data);
 							break;
-						case 2: // Tccd1
-							*val = get_ccd_temp(data, F17H_M70H_CCD1_TEMP);
-							break;
-						case 3: // Tccd2
-							*val = get_ccd_temp(data, F17H_M70H_CCD2_TEMP);
+						case 2 ... 9: // Tccd1-8
+							*val = get_ccd_temp(data, F17H_M70H_CCD_TEMP(channel-2));
 							break;
 						default:
 							return -EOPNOTSUPP;
@@ -328,6 +323,12 @@ static const char *zenpower_temp_label[] = {
 	"Tctl",
 	"Tccd1",
 	"Tccd2",
+	"Tccd3",
+	"Tccd4",
+	"Tccd5",
+	"Tccd6",
+	"Tccd7",
+	"Tccd8",
 };
 
 static const char *zenpower_in_label[] = {
@@ -390,7 +391,13 @@ static const struct hwmon_channel_info *zenpower_info[] = {
 			HWMON_T_INPUT | HWMON_T_MAX | HWMON_T_LABEL,	// Tdie
 			HWMON_T_INPUT | HWMON_T_LABEL,					// Tctl
 			HWMON_T_INPUT | HWMON_T_LABEL,					// Tccd1
-			HWMON_T_INPUT | HWMON_T_LABEL),					// Tccd2
+			HWMON_T_INPUT | HWMON_T_LABEL,					// Tccd2
+			HWMON_T_INPUT | HWMON_T_LABEL,					// Tccd3
+			HWMON_T_INPUT | HWMON_T_LABEL,					// Tccd4
+			HWMON_T_INPUT | HWMON_T_LABEL,					// Tccd5
+			HWMON_T_INPUT | HWMON_T_LABEL,					// Tccd6
+			HWMON_T_INPUT | HWMON_T_LABEL,					// Tccd7
+			HWMON_T_INPUT | HWMON_T_LABEL),					// Tccd8
 
 	HWMON_CHANNEL_INFO(in,
 			HWMON_I_LABEL,	// everything is using 1 based indexing except
@@ -442,7 +449,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	bool swapped_addr = false;
 	bool sp3_chip = false; // SP3 cpus = threadripper / epyc
 	u32 val, primary_plane, secondary_plane;
-	int i;
+	int i, ccd_check = 0;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -456,9 +463,10 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	data->svi_core_addr = false;
 	data->svi_soc_addr = false;
 	data->amps_visible = false;
-	data->ccd1_visible = false;
-	data->ccd2_visible = false;
 	data->node_id = 0;
+	for (i = 0; i < 8; i++) {
+		data->ccd_visible[i] = false;
+	}
 
 	for (id = amd_nb_misc_ids; id->vendor; id++) {
 		if (pdev->vendor == id->vendor && pdev->device == id->device) {
@@ -484,6 +492,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 				if (val == CPUID_PKGTYPE_SP3 || val == CPUID_PKGTYPE_SP3r2) {
 					sp3_chip = true;
 				}
+				ccd_check = 4;
 				break;
 
 			case 0x31: // Zen2 Threadripper/EPYC
@@ -493,19 +502,16 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 				data->amps_visible = true;
 				data->zen2 = true;
 				swapped_addr = true;
-
-				data->read_amdsmn_addr(pdev, data->node_id,
-										F17H_M70H_CCD1_TEMP, &val);
-				if ((val & 0xfff) > 0) {
-					data->ccd1_visible = true;
-				}
-
-				data->read_amdsmn_addr(pdev, data->node_id,
-										F17H_M70H_CCD2_TEMP, &val);
-				if ((val & 0xfff) > 0) {
-					data->ccd2_visible = true;
-				}
+				ccd_check = 8;
 				break;
+		}
+	}
+
+	for (i = 0; i < ccd_check; i++) {
+		data->read_amdsmn_addr(pdev, data->node_id,
+								F17H_M70H_CCD_TEMP(i), &val);
+		if ((val & 0xfff) > 0) {
+			data->ccd_visible[i] = true;
 		}
 	}
 
