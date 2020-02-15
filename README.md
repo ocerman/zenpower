@@ -21,8 +21,10 @@ Because zenpower is using same PCI device as k10temp, you have to disable k10tem
 
 1. Check if k10temp is active. `lsmod | grep k10temp`
 2. Unload k10temp `sudo modprobe -r k10temp`
-3. (optional) blacklist k10temp: `sudo bash -c 'sudo echo -e "\n# replaced with zenpower\nblacklist k10temp" >> /etc/modprobe.d/blacklist.conf'`
+3. (optional*) blacklist k10temp: `sudo bash -c 'sudo echo -e "\n# replaced with zenpower\nblacklist k10temp" >> /etc/modprobe.d/blacklist.conf'`
 4. Activate zenpower `sudo modprobe zenpower`
+
+*If k10temp is not blacklisted, you may have to manually unload k10temp after each restart.
 
 ## Sensors monitoring
 You can use this app: [zenmonitor](https://github.com/ocerman/zenmonitor), or your favourie sensors monitoring software
@@ -38,6 +40,7 @@ You can use this app: [zenmonitor](https://github.com/ocerman/zenmonitor), or yo
 ## Help needed
 It would be very helpful for me for further development of Zenpower if you can share debug data from zenpower. [Read more](https://github.com/ocerman/zenpower/issues/12)
 
-## Known Issues
- - On some systems the SVI2 values for Core/SOC may be swapped. As a workaround you can install module with `sudo make dkms-install MCFLAGS=-DSWAP_CORE_SOC` to swap them back. (Should be fixed in version 0.1.4)
- - The formula for calculating amperage/wattage from raw values may not be correct for all systems. (Should be fixed for Zen2 Ryzen CPUs in version 0.1.4)
+## Notes
+ - Some users reported that a restart is needed after module installation
+ - If you are having trouble compiling zenpower under Ubuntu 18.04 (or older) with new upstream kernel, see [#23](https://github.com/ocerman/zenpower/issues/23)
+ - The meaning of raw current values from SVI2 telemetry is not standarised so the current/power reading may not be accurate on all systems (depends on the board model).
