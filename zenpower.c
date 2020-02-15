@@ -59,8 +59,12 @@ MODULE_VERSION("0.1.8");
 
 #define F17H_M01H_REPORTED_TEMP_CTRL        0x00059800
 #define F17H_M01H_SVI                       0x0005A000
-#define F17H_M01H_SVI_TEL_PLANE0            F17H_M01H_SVI + 0xc
-#define F17H_M01H_SVI_TEL_PLANE1            F17H_M01H_SVI + 0x10
+#define F17H_M01H_SVI_TEL_PLANE0            (F17H_M01H_SVI + 0xC)
+#define F17H_M01H_SVI_TEL_PLANE1            (F17H_M01H_SVI + 0x10)
+#define F17H_M30H_SVI_TEL_PLANE0            (F17H_M01H_SVI + 0x14)
+#define F17H_M30H_SVI_TEL_PLANE1            (F17H_M01H_SVI + 0x10)
+#define F17H_M70H_SVI_TEL_PLANE0            (F17H_M01H_SVI + 0x10)
+#define F17H_M70H_SVI_TEL_PLANE1            (F17H_M01H_SVI + 0xC)
 #define F17H_M70H_CCD_TEMP(x)               (0x00059954 + ((x) * 4))
 
 #define F17H_TEMP_ADJUST_MASK               0x80000
@@ -203,10 +207,11 @@ static unsigned int get_ccd_temp(struct zenpower_data *data, u32 ccd_addr)
 }
 
 int static debug_addrs_arr[] = {
-	F17H_M01H_SVI + 0x8, F17H_M01H_SVI_TEL_PLANE0, F17H_M01H_SVI_TEL_PLANE1,
-	0x000598BC, 0x0005994C, F17H_M70H_CCD_TEMP(0), F17H_M70H_CCD_TEMP(1),
-	F17H_M70H_CCD_TEMP(2), F17H_M70H_CCD_TEMP(3), F17H_M70H_CCD_TEMP(4),
-	F17H_M70H_CCD_TEMP(5), F17H_M70H_CCD_TEMP(6), F17H_M70H_CCD_TEMP(7)
+	F17H_M01H_SVI + 0x8, F17H_M01H_SVI + 0xC, F17H_M01H_SVI + 0x10,
+	F17H_M01H_SVI + 0x14, 0x000598BC, 0x0005994C, F17H_M70H_CCD_TEMP(0),
+	F17H_M70H_CCD_TEMP(1), F17H_M70H_CCD_TEMP(2), F17H_M70H_CCD_TEMP(3),
+	F17H_M70H_CCD_TEMP(4), F17H_M70H_CCD_TEMP(5), F17H_M70H_CCD_TEMP(6),
+	F17H_M70H_CCD_TEMP(7)
 };
 
 static ssize_t debug_data_show(struct device *dev,
@@ -446,10 +451,8 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct device *dev = &pdev->dev;
 	struct zenpower_data *data;
 	struct device *hwmon_dev;
-	bool swapped_addr = false;
-	bool sp3_chip = false; // SP3 cpus = threadripper / epyc
-	u32 val, primary_plane, secondary_plane;
 	int i, ccd_check = 0;
+	u32 val;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -484,25 +487,52 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		switch (boot_cpu_data.x86_model) {
 			case 0x1:  // Zen
 			case 0x8:  // Zen+
-			case 0x11: // Zen APU
-			case 0x18: // Zen+ APU
 				data->amps_visible = true;
 
 				val = cpuid_ebx(0x80000001) & CPUID_PKGTYPE_MASK; // package type
 				if (val == CPUID_PKGTYPE_SP3 || val == CPUID_PKGTYPE_SP3r2) {
-					sp3_chip = true;
+					// Threadripper / EPYC
+					if (data->node_id == 0) {
+						data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE0;
+					}
+					if (data->node_id == 1) {
+						data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
+					}
+				}
+				else{
+					// Ryzen
+					data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
+					data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE1;
 				}
 				ccd_check = 4;
 				break;
 
+			case 0x11: // Zen APU
+			case 0x18: // Zen+ APU
+				data->amps_visible = true;
+				data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
+				data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE1;
+				break;
+
 			case 0x31: // Zen2 Threadripper/EPYC
-				sp3_chip = true; // fall through
+				data->zen2 = true;
+				data->amps_visible = true;
+				data->svi_core_addr = F17H_M30H_SVI_TEL_PLANE0;
+				data->svi_soc_addr = F17H_M30H_SVI_TEL_PLANE1;
+				ccd_check = 8;
+				break;
 
 			case 0x71: // Zen2 Ryzen
-				data->amps_visible = true;
 				data->zen2 = true;
-				swapped_addr = true;
+				data->amps_visible = true;
+				data->svi_core_addr = F17H_M70H_SVI_TEL_PLANE0;
+				data->svi_soc_addr = F17H_M70H_SVI_TEL_PLANE1;
 				ccd_check = 8;
+				break;
+
+			default:
+				data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
+				data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE1;
 				break;
 		}
 	}
@@ -512,39 +542,6 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 								F17H_M70H_CCD_TEMP(i), &val);
 		if ((val & 0xfff) > 0) {
 			data->ccd_visible[i] = true;
-		}
-	}
-
-	#ifdef SWAP_CORE_SOC
-		swapped_addr = !swapped_addr;
-	#endif
-
-	// SVI2 values seems to be only in node #0 or #1
-	if (data->node_id == 0 || data->node_id == 1){
-
-		if (swapped_addr) {
-			primary_plane = F17H_M01H_SVI_TEL_PLANE1;
-			secondary_plane = F17H_M01H_SVI_TEL_PLANE0;
-		}
-		else {
-			primary_plane = F17H_M01H_SVI_TEL_PLANE0;
-			secondary_plane = F17H_M01H_SVI_TEL_PLANE1;
-		}
-
-		data->read_amdsmn_addr(pdev, data->node_id, primary_plane, &val);
-		if (val != 0) {
-			if (sp3_chip){
-				if (data->node_id == 0) {
-					data->svi_soc_addr = primary_plane;
-				}
-				if (data->node_id == 1) {
-					data->svi_core_addr = primary_plane;
-				}
-			}
-			else if (data->node_id == 0) {
-				data->svi_core_addr = primary_plane;
-				data->svi_soc_addr = secondary_plane;
-			}
 		}
 	}
 
