@@ -43,4 +43,4 @@ It would be very helpful for me for further development of Zenpower if you can s
 ## Notes
  - Some users reported that a restart is needed after module installation
  - If you are having trouble compiling zenpower under Ubuntu 18.04 (or older) with new upstream kernel, see [#23](https://github.com/ocerman/zenpower/issues/23)
- - The meaning of raw current values from SVI2 telemetry is not standarised so the current/power reading may not be accurate on all systems (depends on the board model).
+ - The meaning of raw current values from SVI2 telemetry are not standardised so the current/power readings may not be accurate on all systems (depends on the board model).
