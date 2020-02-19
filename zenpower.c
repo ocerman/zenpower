@@ -79,17 +79,14 @@ MODULE_VERSION("0.1.9");
 	})
 #endif
 
-/* CPUID function 0x80000001, ebx */
-#define CPUID_PKGTYPE_MASK	0xf0000000
-#define CPUID_PKGTYPE_SP3	0x40000000 // https://www.sandpile.org/x86/cpuid.htm
-#define CPUID_PKGTYPE_SP3r2	0x70000000
-
 struct zenpower_data {
 	struct pci_dev *pdev;
 	void (*read_amdsmn_addr)(struct pci_dev *pdev, u16 node_id, u32 address, u32 *regval);
 	u32 svi_core_addr;
 	u32 svi_soc_addr;
 	u16 node_id;
+	u8 cpu_id;
+	u8 nodes_per_cpu;
 	int temp_offset;
 	bool zen2;
 	bool kernel_smn_support;
@@ -221,8 +218,10 @@ static ssize_t debug_data_show(struct device *dev,
 	struct zenpower_data *data = dev_get_drvdata(dev);
 	u32 smndata;
 
-	len += sprintf(buf, "kernel_smn_support = %d\n", data->kernel_smn_support);
-	len += sprintf(buf + len, "node_id = %d\n", data->node_id);
+	len += sprintf(buf + len, "KERN_SUP: %d\n", data->kernel_smn_support);
+	len += sprintf(buf + len, "NODE%d; CPU%d; ", data->node_id, data->cpu_id);
+	len += sprintf(buf + len, "N/CPU: %d\n", data->nodes_per_cpu);
+
 	for (i = 0; i < ARRAY_SIZE(debug_addrs_arr); i++){
 		data->read_amdsmn_addr(data->pdev, data->node_id, debug_addrs_arr[i], &smndata);
 		len += sprintf(buf + len, "%08x = %08x\n", debug_addrs_arr[i], smndata);
@@ -452,6 +451,8 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct zenpower_data *data;
 	struct device *hwmon_dev;
 	int i, ccd_check = 0;
+	bool multinode;
+	u8 cpu_node;
 	u32 val;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
@@ -483,24 +484,29 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		data->node_id = amd_pci_dev_to_node_id(pdev);
 	}
 
+	// CPUID_Fn8000001E_ECX [Node Identifiers] (Core::X86::Cpuid::NodeId)
+	// 10:8 NodesPerProcessor
+	data->nodes_per_cpu = 1 + ((cpuid_ecx(0x8000001E) >> 8) & 0b111);
+	multinode = (data->nodes_per_cpu > 1);
+
+	cpu_node = data->node_id % data->nodes_per_cpu;
+	data->cpu_id = data->node_id / data->nodes_per_cpu;
+
 	if (boot_cpu_data.x86 == 0x17) {
 		switch (boot_cpu_data.x86_model) {
 			case 0x1:  // Zen
 			case 0x8:  // Zen+
 				data->amps_visible = true;
 
-				val = cpuid_ebx(0x80000001) & CPUID_PKGTYPE_MASK; // package type
-				if (val == CPUID_PKGTYPE_SP3 || val == CPUID_PKGTYPE_SP3r2) {
-					// Threadripper / EPYC
-					if (data->node_id == 0) {
+				if (multinode) {	// Threadripper / EPYC
+					if (cpu_node == 0) {
 						data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE0;
 					}
-					if (data->node_id == 1) {
+					if (cpu_node == 1) {
 						data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
 					}
 				}
-				else{
-					// Ryzen
+				else {				// Ryzen
 					data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
 					data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE1;
 				}
