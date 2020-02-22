@@ -1,4 +1,4 @@
-VERSION         := 0.1.9
+VERSION         := 0.1.10
 TARGET          := $(shell uname -r)
 DKMS_ROOT_PATH  := /usr/src/zenpower-$(VERSION)
 
