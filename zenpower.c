@@ -110,6 +110,7 @@ static const struct tctl_offset tctl_offset_table[] = {
 };
 
 static DEFINE_MUTEX(nb_smu_ind_mutex);
+static bool multicpu = false;
 
 static umode_t zenpower_is_visible(const void *rdata,
 									enum hwmon_sensor_types type,
@@ -322,51 +323,118 @@ static int zenpower_read(struct device *dev, enum hwmon_sensor_types type,
 	return 0;
 }
 
-static const char *zenpower_temp_label[] = {
-	"Tdie",
-	"Tctl",
-	"Tccd1",
-	"Tccd2",
-	"Tccd3",
-	"Tccd4",
-	"Tccd5",
-	"Tccd6",
-	"Tccd7",
-	"Tccd8",
+static const char *zenpower_temp_label[][10] = {
+	{
+		"Tdie",
+		"Tctl",
+		"Tccd1",
+		"Tccd2",
+		"Tccd3",
+		"Tccd4",
+		"Tccd5",
+		"Tccd6",
+		"Tccd7",
+		"Tccd8",
+	},
+	{
+		"cpu0 Tdie",
+		"cpu0 Tctl",
+		"cpu0 Tccd1",
+		"cpu0 Tccd2",
+		"cpu0 Tccd3",
+		"cpu0 Tccd4",
+		"cpu0 Tccd5",
+		"cpu0 Tccd6",
+		"cpu0 Tccd7",
+		"cpu0 Tccd8",
+	},
+	{
+		"cpu1 Tdie",
+		"cpu1 Tctl",
+		"cpu1 Tccd1",
+		"cpu1 Tccd2",
+		"cpu1 Tccd3",
+		"cpu1 Tccd4",
+		"cpu1 Tccd5",
+		"cpu1 Tccd6",
+		"cpu1 Tccd7",
+		"cpu1 Tccd8",
+	}
 };
 
-static const char *zenpower_in_label[] = {
-	"",
-	"SVI2_Core",
-	"SVI2_SoC",
+static const char *zenpower_in_label[][3] = {
+	{
+		"",
+		"SVI2_Core",
+		"SVI2_SoC",
+	},
+	{
+		"",
+		"cpu0 SVI2_Core",
+		"cpu0 SVI2_SoC",
+	},
+	{
+		"",
+		"cpu1 SVI2_Core",
+		"cpu1 SVI2_SoC",
+	}
 };
 
-static const char *zenpower_curr_label[] = {
-	"SVI2_C_Core",
-	"SVI2_C_SoC",
+static const char *zenpower_curr_label[][2] = {
+	{
+		"SVI2_C_Core",
+		"SVI2_C_SoC",
+	},
+	{
+		"cpu0 SVI2_C_Core",
+		"cpu0 SVI2_C_SoC",
+	},
+	{
+		"cpu1 SVI2_C_Core",
+		"cpu1 SVI2_C_SoC",
+	}
 };
 
-static const char *zenpower_power_label[] = {
-	"SVI2_P_Core",
-	"SVI2_P_SoC",
+static const char *zenpower_power_label[][2] = {
+	{
+		"SVI2_P_Core",
+		"SVI2_P_SoC",
+	},
+	{
+		"cpu0 SVI2_P_Core",
+		"cpu0 SVI2_P_SoC",
+	},
+	{
+		"cpu1 SVI2_P_Core",
+		"cpu1 SVI2_P_SoC",
+	}
 };
 
 static int zenpower_read_labels(struct device *dev,
 				enum hwmon_sensor_types type, u32 attr,
 				int channel, const char **str)
 {
+	struct zenpower_data *data;
+	u8 i = 0;
+
+	if (multicpu) {
+		data = dev_get_drvdata(dev);
+		if (data->cpu_id <= 1)
+			i = data->cpu_id + 1;
+	}
+
 	switch (type) {
 		case hwmon_temp:
-			*str = zenpower_temp_label[channel];
+			*str = zenpower_temp_label[i][channel];
 			break;
 		case hwmon_in:
-			*str = zenpower_in_label[channel];
+			*str = zenpower_in_label[i][channel];
 			break;
 		case hwmon_curr:
-			*str = zenpower_curr_label[channel];
+			*str = zenpower_curr_label[i][channel];
 			break;
 		case hwmon_power:
-			*str = zenpower_power_label[channel];
+			*str = zenpower_power_label[i][channel];
 			break;
 		default:
 			return -EOPNOTSUPP;
@@ -452,7 +520,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct device *hwmon_dev;
 	int i, ccd_check = 0;
 	bool multinode;
-	u8 cpu_node;
+	u8 node_of_cpu;
 	u32 val;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
@@ -489,8 +557,11 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	data->nodes_per_cpu = 1 + ((cpuid_ecx(0x8000001E) >> 8) & 0b111);
 	multinode = (data->nodes_per_cpu > 1);
 
-	cpu_node = data->node_id % data->nodes_per_cpu;
+	node_of_cpu = data->node_id % data->nodes_per_cpu;
 	data->cpu_id = data->node_id / data->nodes_per_cpu;
+
+	if (data->cpu_id > 0)
+		multicpu = true;
 
 	if (boot_cpu_data.x86 == 0x17) {
 		switch (boot_cpu_data.x86_model) {
@@ -499,10 +570,10 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 				data->amps_visible = true;
 
 				if (multinode) {	// Threadripper / EPYC
-					if (cpu_node == 0) {
+					if (node_of_cpu == 0) {
 						data->svi_soc_addr = F17H_M01H_SVI_TEL_PLANE0;
 					}
-					if (cpu_node == 1) {
+					if (node_of_cpu == 1) {
 						data->svi_core_addr = F17H_M01H_SVI_TEL_PLANE0;
 					}
 				}
