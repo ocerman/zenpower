@@ -38,7 +38,7 @@
 MODULE_DESCRIPTION("AMD ZEN family CPU Sensors Driver");
 MODULE_AUTHOR("Ondrej Čerman");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1.10");
+MODULE_VERSION("0.1.11");
 
 
 #ifndef PCI_DEVICE_ID_AMD_17H_DF_F3
@@ -518,6 +518,7 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct device *dev = &pdev->dev;
 	struct zenpower_data *data;
 	struct device *hwmon_dev;
+	struct pci_dev *misc;
 	int i, ccd_check = 0;
 	bool multinode;
 	u8 node_of_cpu;
@@ -540,16 +541,14 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		data->ccd_visible[i] = false;
 	}
 
-	for (id = amd_nb_misc_ids; id->vendor; id++) {
-		if (pdev->vendor == id->vendor && pdev->device == id->device) {
+	for (i = 0; i < amd_nb_num(); i++) {
+		misc = node_to_amd_nb(i)->misc;
+		if (pdev->vendor == misc->vendor && pdev->device == misc->device) {
 			data->kernel_smn_support = true;
 			data->read_amdsmn_addr = kernel_smn_read;
+			data->node_id = amd_pci_dev_to_node_id(pdev);
 			break;
 		}
-	}
-
-	if (data->kernel_smn_support) {
-		data->node_id = amd_pci_dev_to_node_id(pdev);
 	}
 
 	// CPUID_Fn8000001E_ECX [Node Identifiers] (Core::X86::Cpuid::NodeId)
