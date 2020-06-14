@@ -38,7 +38,7 @@
 MODULE_DESCRIPTION("AMD ZEN family CPU Sensors Driver");
 MODULE_AUTHOR("Ondrej Čerman");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1.11");
+MODULE_VERSION("0.1.12");
 
 
 #ifndef PCI_DEVICE_ID_AMD_17H_DF_F3
@@ -51,6 +51,10 @@ MODULE_VERSION("0.1.11");
 
 #ifndef PCI_DEVICE_ID_AMD_17H_M30H_DF_F3
 #define PCI_DEVICE_ID_AMD_17H_M30H_DF_F3    0x1493
+#endif
+
+#ifndef PCI_DEVICE_ID_AMD_17H_M60H_DF_F3
+#define PCI_DEVICE_ID_AMD_17H_M60H_DF_F3    0x144b
 #endif
 
 #ifndef PCI_DEVICE_ID_AMD_17H_M70H_DF_F3
@@ -598,6 +602,10 @@ static int zenpower_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 				ccd_check = 8;
 				break;
 
+			case 0x60: // Zen2 APU
+				data->zen2 = true;
+				break;
+
 			case 0x71: // Zen2 Ryzen
 				data->zen2 = true;
 				data->amps_visible = true;
@@ -642,6 +650,7 @@ static const struct pci_device_id zenpower_id_table[] = {
 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_17H_DF_F3) },
 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_17H_M10H_DF_F3) },
 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_17H_M30H_DF_F3) },
+	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_17H_M60H_DF_F3) },
 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_17H_M70H_DF_F3) },
 	{}
 };
