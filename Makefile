@@ -30,7 +30,8 @@ clean:
 	@$(MAKE) -C $(KERNEL_BUILD) M=$(CURDIR) clean
 
 dkms-install:
-	mkdir $(DKMS_ROOT_PATH)
+	dkms --version >> /dev/null
+	mkdir -p $(DKMS_ROOT_PATH)
 	cp $(CURDIR)/dkms.conf $(DKMS_ROOT_PATH)
 	cp $(CURDIR)/Makefile $(DKMS_ROOT_PATH)
 	cp $(CURDIR)/zenpower.c $(DKMS_ROOT_PATH)
