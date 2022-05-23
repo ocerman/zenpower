@@ -12,9 +12,25 @@
 - ***Current*** ( SVI2 )
 - ***Power*** ( SVI2 )
 
+<br>
+<br>
 
-Make sure that your Linux kernel have support for your CPUs as Zenpower is using kernel function `amd_smn_read` to read values from SMN. A fallback method (which may or may not work!) will be used when it is detected that kernel function `amd_smn_read` lacks support for your CPU.
-For AMD family 17h Model 70h (Ryzen 3000) CPUs you need kernel version 5.3.4 or newer or kernel with this patch: https://patchwork.kernel.org/patch/11043277/
+## Requirements
+
+- Your **Linux Kernel** must support your **CPU**.
+
+    ***ZenPower*** *reads values from **SMN** with* <br>
+    *the kernel function:* `amd_smn_read`
+    
+    *There is a fallback, however* <br>
+    *it is not guaranteed to work.*
+
+- `AMD Ryzen 3000 CPUs`
+
+    Family: `17h` <br>
+    Model:  `70h`
+
+    Require a `5.3.4+` kernel or a **[Patched]** one.
 
 <br>
 <br>
@@ -169,4 +185,5 @@ of **ZenPower** to help future development efforts.
 
 [Share Debug Data]: https://github.com/ocerman/zenpower/issues/12
 [ZenMonitor]: https://github.com/ocerman/zenmonitor
+[Patched]: https://patchwork.kernel.org/patch/11043277/
 [#23]: https://github.com/ocerman/zenpower/issues/23
