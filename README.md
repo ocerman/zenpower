@@ -1,5 +1,5 @@
 
-# Zenpower
+# ZenPower
 
 *Linux kernel Driver AMD Zen Family CPUs*
 
@@ -17,10 +17,13 @@ Make sure that your Linux kernel have support for your CPUs as Zenpower is using
 For AMD family 17h Model 70h (Ryzen 3000) CPUs you need kernel version 5.3.4 or newer or kernel with this patch: https://patchwork.kernel.org/patch/11043277/
 
 <br>
+<br>
 
 ## Installation
 
 *You can install this module via `dkms`.*
+
+<br>
 
 ### ![Badge Ubuntu]
 
@@ -41,16 +44,45 @@ sudo make dkms-install
 ```
 
 <br>
+<br>
 
-## Module activation
-Because zenpower is using same PCI device as k10temp, you have to disable k10temp first.
+## Activation
 
-1. Check if k10temp is active. `lsmod | grep k10temp`
-2. Unload k10temp `sudo modprobe -r k10temp`
-3. (optional*) blacklist k10temp: `sudo bash -c 'sudo echo -e "\n# replaced with zenpower\nblacklist k10temp" >> /etc/modprobe.d/blacklist.conf'`
-4. Activate zenpower `sudo modprobe zenpower`
+Because **ZenPower** is using same **PCI** device <br>
+as `k10temp`, you have to disable it first.
 
-*If k10temp is not blacklisted, you may have to manually unload k10temp after each restart.
+1. Check if the device is active:
+
+    ```sh
+    lsmod | grep k10temp
+    ```
+
+2. If active, unload it with:
+
+    ```sh
+    sudo modprobe -r k10temp
+    ```
+
+3. Blacklist the device:
+
+    ```sh
+    sudo bash -c 'sudo echo -e "\n# replaced with zenpower\nblacklist k10temp" >> /etc/modprobe.d/blacklist.conf'
+    ```
+    
+    #### Optional
+    
+    *If k10temp is not blacklisted, you may have to* <br>
+    *manually unload k10temp after each restart.*
+    
+
+4. Activate **ZenPower** with:
+    
+    ```sh
+    sudo modprobe zenpower
+    ```
+
+<br>
+<br>
 
 ## Sensors monitoring
 You can use this app: [zenmonitor](https://github.com/ocerman/zenmonitor), or your favourie sensors monitoring software
