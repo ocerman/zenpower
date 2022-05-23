@@ -51,17 +51,23 @@ sudo make dkms-install
 Because **ZenPower** is using same **PCI** device <br>
 as `k10temp`, you have to disable it first.
 
+<br>
+
 1. Check if the device is active:
 
     ```sh
     lsmod | grep k10temp
     ```
 
+    <br>
+
 2. If active, unload it with:
 
     ```sh
     sudo modprobe -r k10temp
     ```
+    
+    <br>
 
 3. Blacklist the device:
 
@@ -74,6 +80,7 @@ as `k10temp`, you have to disable it first.
     *If k10temp is not blacklisted, you may have to* <br>
     *manually unload k10temp after each restart.*
     
+    <br>
 
 4. Activate **ZenPower** with:
     
@@ -84,16 +91,51 @@ as `k10temp`, you have to disable it first.
 <br>
 <br>
 
-## Sensors monitoring
-You can use this app: [zenmonitor](https://github.com/ocerman/zenmonitor), or your favourie sensors monitoring software
+## Monitoring
 
-## Update instructions
-1. Unload zenpower `sudo modprobe -r zenpower`
-2. Goto zenpower directory `cd ~/zenpower`
-3. Uninstall old version `sudo make dkms-uninstall`
-4. Update code from git `git pull`
-5. Install new version `sudo make dkms-install`
-6. Activate zenpower `sudo modprobe zenpower`
+You can use the **[ZenMonitor]** or your <br>
+favorite sensor monitoring software.
+
+<br>
+<br>
+
+## Updating
+
+1. Unload **ZenPower**:
+    
+    ```sh
+    sudo modprobe -r zenpower
+    ```
+    
+2. Navigate to its folder:
+
+    ```sh
+    cd ~/zenpower
+    ```
+    
+3. Uninstall the old version:
+
+    ```sh
+    sudo make dkms-uninstall
+    ```
+    
+4. Update the code from git
+    
+    ```
+    git pull
+    ```
+    
+5. Install the new version:
+
+    ```
+    sudo make dkms-install
+    ```
+    
+6. Activate **Zenpower**:
+    
+    ```
+    sudo modprobe zenpower
+    ```
 
 ## Help needed
 It would be very helpful for me for further development of Zenpower if you can share debug data from zenpower. [Read more](https://github.com/ocerman/zenpower/issues/12)
@@ -108,3 +150,5 @@ It would be very helpful for me for further development of Zenpower if you can s
 <!----------------------------------------------------------------------------->
 
 [Badge Ubuntu]: https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge
+
+[ZenMonitor]: https://github.com/ocerman/zenmonitor
