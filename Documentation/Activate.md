@@ -30,8 +30,8 @@ as **[k10temp]**, you will need to disable it first.
     
     #### Optional
     
-    *If **[k10temp]** is not blacklisted, you may have to* <br>
-    *manually unload k10temp after each restart.*
+    *If **[k10temp]** is not blacklisted, you may have* <br>
+    *to manually unload it after every restart.*
     
     <br>
 
