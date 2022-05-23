@@ -32,77 +32,6 @@
 
     Require a `5.3.4+` kernel or a **[Patched]** one.
 
-<br>
-<br>
-
-## Installation
-
-*You can install this module via `dkms`.*
-
-<br>
-
-### ![Badge Ubuntu]
-
-```
-sudo apt install                \
-    linux-headers-$(uname -r)   \
-    build-essential             \
-    dkms                        \
-    git
-
-cd ~
-
-git clone https://github.com/ocerman/zenpower.git
-
-cd zenpower
-
-sudo make dkms-install
-```
-
-<br>
-<br>
-
-## Activation
-
-Because **ZenPower** is using same **PCI** device <br>
-as `k10temp`, you have to disable it first.
-
-<br>
-
-1. Check if the device is active:
-
-    ```sh
-    lsmod | grep k10temp
-    ```
-
-    <br>
-
-2. If active, unload it with:
-
-    ```sh
-    sudo modprobe -r k10temp
-    ```
-    
-    <br>
-
-3. Blacklist the device:
-
-    ```sh
-    sudo bash -c 'sudo echo -e "\n# replaced with zenpower\nblacklist k10temp" >> /etc/modprobe.d/blacklist.conf'
-    ```
-    
-    #### Optional
-    
-    *If k10temp is not blacklisted, you may have to* <br>
-    *manually unload k10temp after each restart.*
-    
-    <br>
-
-4. Activate **ZenPower** with:
-    
-    ```sh
-    sudo modprobe zenpower
-    ```
 
 <br>
 <br>
@@ -111,47 +40,6 @@ as `k10temp`, you have to disable it first.
 
 You can use the **[ZenMonitor]** or your <br>
 favorite sensor monitoring software.
-
-<br>
-<br>
-
-## Updating
-
-1. Unload **ZenPower**:
-    
-    ```sh
-    sudo modprobe -r zenpower
-    ```
-    
-2. Navigate to its folder:
-
-    ```sh
-    cd ~/zenpower
-    ```
-    
-3. Uninstall the old version:
-
-    ```sh
-    sudo make dkms-uninstall
-    ```
-    
-4. Update the code from git
-    
-    ```
-    git pull
-    ```
-    
-5. Install the new version:
-
-    ```
-    sudo make dkms-install
-    ```
-    
-6. Activate **Zenpower**:
-    
-    ```
-    sudo modprobe zenpower
-    ```
 
 <br>
 <br>
@@ -182,7 +70,6 @@ of **ZenPower** to help future development efforts.
 <!----------------------------------------------------------------------------->
 
 [Badge License]: https://img.shields.io/badge/License-GPL_2-blue.svg?style=for-the-badge
-[Badge Ubuntu]: https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge
 
 [License]: LICENSE
 
