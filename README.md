@@ -34,17 +34,17 @@
 - Your **Linux Kernel** must support your **CPU**.
 
     ***ZenPower*** *reads values from **SMN** with* <br>
-    *the kernel function:* `amd_smn_read`
+    *the kernel function:*  `amd_smn_read`
     
     *There is a fallback, however* <br>
     *it is not guaranteed to work.*
 
-- `AMD Ryzen 3000` CPUs
+- `AMD Ryzen 3000` CPUs
 
-    Family: `17h` <br>
-    Model:  `70h`
+    Family: `17h` <br>
+    Model: `70h`
 
-    Require a `5.3.4+` kernel or a **[Patched]** one.
+    Require a `5.3.4+` kernel or a **[Patched]** one.
 
 
 <br>
@@ -72,7 +72,7 @@ of **ZenPower** to help future development efforts.
    was necessary after module installation.
 
  - If you are having trouble compiling **ZenPower** under <br>
-   `Ubuntu 18.04+` with new upstream kernel, see [#23].
+   `Ubuntu 18.04+` with new upstream kernel, see **[#23]**.
  
  - The meaning of raw current values from **SVI2** <br>
    telemetry are not standardized so the current <br>
