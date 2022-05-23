@@ -1,8 +1,8 @@
 
 # Activation
 
-Because **ZenPower** is using same **PCI** device <br>
-as **[k10temp]**, you have to disable it first.
+As **ZenPower** is using the same **PCI** device <br>
+as **[k10temp]**, you will need to disable it first.
 
 <br>
 
