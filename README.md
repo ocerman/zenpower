@@ -1,5 +1,5 @@
 
-# ZenPower
+# ZenPower    [![Badge License]][License]
 
 *Linux kernel Driver AMD Zen Family CPUs*
 
@@ -25,7 +25,7 @@
     *There is a fallback, however* <br>
     *it is not guaranteed to work.*
 
-- `AMD Ryzen 3000 CPUs`
+- `AMD Ryzen 3000` CPUs
 
     Family: `17h` <br>
     Model:  `70h`
@@ -181,7 +181,10 @@ of **ZenPower** to help future development efforts.
 
 <!----------------------------------------------------------------------------->
 
+[Badge License]: https://img.shields.io/badge/License-GPL_2-blue.svg?style=for-the-badge
 [Badge Ubuntu]: https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge
+
+[License]: LICENSE
 
 [Share Debug Data]: https://github.com/ocerman/zenpower/issues/12
 [ZenMonitor]: https://github.com/ocerman/zenmonitor
