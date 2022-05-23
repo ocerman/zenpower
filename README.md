@@ -16,17 +16,31 @@
 Make sure that your Linux kernel have support for your CPUs as Zenpower is using kernel function `amd_smn_read` to read values from SMN. A fallback method (which may or may not work!) will be used when it is detected that kernel function `amd_smn_read` lacks support for your CPU.
 For AMD family 17h Model 70h (Ryzen 3000) CPUs you need kernel version 5.3.4 or newer or kernel with this patch: https://patchwork.kernel.org/patch/11043277/
 
-## Installation
-You can install this module via dkms.
+<br>
 
-### Installation commands for Ubuntu
+## Installation
+
+*You can install this module via `dkms`.*
+
+### ![Badge Ubuntu]
+
 ```
-sudo apt install dkms git build-essential linux-headers-$(uname -r)
+sudo apt install                \
+    linux-headers-$(uname -r)   \
+    build-essential             \
+    dkms                        \
+    git
+
 cd ~
+
 git clone https://github.com/ocerman/zenpower.git
+
 cd zenpower
+
 sudo make dkms-install
 ```
+
+<br>
 
 ## Module activation
 Because zenpower is using same PCI device as k10temp, you have to disable k10temp first.
@@ -56,3 +70,9 @@ It would be very helpful for me for further development of Zenpower if you can s
  - Some users reported that a restart is needed after module installation
  - If you are having trouble compiling zenpower under Ubuntu 18.04 (or older) with new upstream kernel, see [#23](https://github.com/ocerman/zenpower/issues/23)
  - The meaning of raw current values from SVI2 telemetry are not standardised so the current/power readings may not be accurate on all systems (depends on the board model).
+
+
+
+<!----------------------------------------------------------------------------->
+
+[Badge Ubuntu]: https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge
