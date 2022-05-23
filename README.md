@@ -137,13 +137,29 @@ favorite sensor monitoring software.
     sudo modprobe zenpower
     ```
 
-## Help needed
-It would be very helpful for me for further development of Zenpower if you can share debug data from zenpower. [Read more](https://github.com/ocerman/zenpower/issues/12)
+<br>
+<br>
+
+## Help Wanted
+
+It is greatly appreciated if you **[Share Debug Data]** <br>
+of **ZenPower** to help future development efforts.
+
+<br>
+<br>
 
 ## Notes
- - Some users reported that a restart is needed after module installation
- - If you are having trouble compiling zenpower under Ubuntu 18.04 (or older) with new upstream kernel, see [#23](https://github.com/ocerman/zenpower/issues/23)
- - The meaning of raw current values from SVI2 telemetry are not standardised so the current/power readings may not be accurate on all systems (depends on the board model).
+
+ - Some users have reported that a restart <br>
+   was necessary after module installation.
+
+ - If you are having trouble compiling **ZenPower** under <br>
+   `Ubuntu 18.04+` with new upstream kernel, see [#23].
+ 
+ - The meaning of raw current values from **SVI2** <br>
+   telemetry are not standardized so the current <br>
+   and power readings may not be accurate on <br>
+   all systems (depends on the board model).
 
 
 
@@ -151,4 +167,6 @@ It would be very helpful for me for further development of Zenpower if you can s
 
 [Badge Ubuntu]: https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge
 
+[Share Debug Data]: https://github.com/ocerman/zenpower/issues/12
 [ZenMonitor]: https://github.com/ocerman/zenmonitor
+[#23]: https://github.com/ocerman/zenpower/issues/23
