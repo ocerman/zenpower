@@ -1,7 +1,7 @@
 
 # Installation
 
-*You can install this module via `dkms` .*
+*You can install this module via  `dkms`  .*
 
 <br>
 
@@ -28,4 +28,4 @@ sudo make dkms-install
 
 <!----------------------------------------------------------------------------->
 
-[Badge Ubuntu]: https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge
+[Badge Ubuntu]: https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logoColor=white&logo=Ubuntu
