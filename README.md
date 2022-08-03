@@ -5,6 +5,7 @@
 
 <br>
 <br>
+<br>
 
 <div align = center>
 
@@ -77,6 +78,7 @@ of **ZenPower** to help future development efforts.
    and power readings may not be accurate on <br>
    all systems (depends on the board model).
 
+<br>
 
 
 <!----------------------------------------------------------------------------->
