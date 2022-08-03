@@ -4,19 +4,17 @@
 *Linux kernel Driver AMD Zen Family CPUs*
 
 <br>
+<br>
 
 <div align = center>
-
----
 
 [![Button Install]][Install]   
 [![Button Activate]][Activate]   
 [![Button Update]][Update]
 
----
-
 </div>
 
+<br>
 <br>
 
 ## Readings
@@ -83,20 +81,23 @@ of **ZenPower** to help future development efforts.
 
 <!----------------------------------------------------------------------------->
 
-[Badge License]: https://img.shields.io/badge/License-GPL_2-blue.svg?style=for-the-badge
+[Share Debug Data]: https://github.com/ocerman/zenpower/issues/12
+[ZenMonitor]: https://github.com/ocerman/zenmonitor
+[Patched]: https://patchwork.kernel.org/patch/11043277/
+[#23]: https://github.com/ocerman/zenpower/issues/23
 
 [Activate]: Documentation/Activate.md
 [Install]: Documentation/Install.md
 [License]: LICENSE
 [Update]: Documentation/Update.md
 
-[Share Debug Data]: https://github.com/ocerman/zenpower/issues/12
-[ZenMonitor]: https://github.com/ocerman/zenmonitor
-[Patched]: https://patchwork.kernel.org/patch/11043277/
-[#23]: https://github.com/ocerman/zenpower/issues/23
+
+<!----------------------------------[ Badges ]--------------------------------->
+
+[Badge License]: https://img.shields.io/badge/License-GPL2-015d93.svg?style=for-the-badge&labelColor=blue
 
 
-<!----------------------------------------------------------------------------->
+<!---------------------------------[ Buttons ]--------------------------------->
 
 [Button Activate]: https://img.shields.io/badge/Activate-cdad0d?style=for-the-badge
 [Button Install]: https://img.shields.io/badge/Install-df6195?style=for-the-badge
