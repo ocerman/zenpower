@@ -101,6 +101,6 @@ of **ZenPower** to help future development efforts.
 
 <!---------------------------------[ Buttons ]--------------------------------->
 
-[Button Activate]: https://img.shields.io/badge/Activate-cdad0d?style=for-the-badge
-[Button Install]: https://img.shields.io/badge/Install-df6195?style=for-the-badge
-[Button Update]: https://img.shields.io/badge/Update-2ba4ab?style=for-the-badge
+[Button Activate]: https://img.shields.io/badge/Activate-cdad0d?style=for-the-badge&logoColor=white&logo=Lumen
+[Button Install]: https://img.shields.io/badge/Install-df6195?style=for-the-badge&logoColor=white&logo=DocuSign
+[Button Update]: https://img.shields.io/badge/Update-2ba4ab?style=for-the-badge&logoColor=white&logo=MLflow
