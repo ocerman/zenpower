@@ -1,46 +1,106 @@
-# Zenpower
-Zenpower is Linux kernel driver for reading temperature, voltage(SVI2), current(SVI2) and power(SVI2) for AMD Zen family CPUs.
 
-Make sure that your Linux kernel have support for your CPUs as Zenpower is using kernel function `amd_smn_read` to read values from SMN. A fallback method (which may or may not work!) will be used when it is detected that kernel function `amd_smn_read` lacks support for your CPU.
-For AMD family 17h Model 70h (Ryzen 3000) CPUs you need kernel version 5.3.4 or newer or kernel with this patch: https://patchwork.kernel.org/patch/11043277/
+# ZenPower    [![Badge License]][License]
 
-## Installation
-You can install this module via dkms.
+*Linux kernel Driver AMD Zen Family CPUs*
 
-### Installation commands for Ubuntu
-```
-sudo apt install dkms git build-essential linux-headers-$(uname -r)
-cd ~
-git clone https://github.com/ocerman/zenpower.git
-cd zenpower
-sudo make dkms-install
-```
+<br>
+<br>
+<br>
 
-## Module activation
-Because zenpower is using same PCI device as k10temp, you have to disable k10temp first.
+<div align = center>
 
-1. Check if k10temp is active. `lsmod | grep k10temp`
-2. Unload k10temp `sudo modprobe -r k10temp`
-3. (optional*) blacklist k10temp: `sudo bash -c 'sudo echo -e "\n# replaced with zenpower\nblacklist k10temp" >> /etc/modprobe.d/blacklist.conf'`
-4. Activate zenpower `sudo modprobe zenpower`
+[![Button Install]][Install]   
+[![Button Activate]][Activate]   
+[![Button Update]][Update]
 
-*If k10temp is not blacklisted, you may have to manually unload k10temp after each restart.
+</div>
 
-## Sensors monitoring
-You can use this app: [zenmonitor](https://github.com/ocerman/zenmonitor), or your favourie sensors monitoring software
+<br>
+<br>
 
-## Update instructions
-1. Unload zenpower `sudo modprobe -r zenpower`
-2. Goto zenpower directory `cd ~/zenpower`
-3. Uninstall old version `sudo make dkms-uninstall`
-4. Update code from git `git pull`
-5. Install new version `sudo make dkms-install`
-6. Activate zenpower `sudo modprobe zenpower`
+## Readings
 
-## Help needed
-It would be very helpful for me for further development of Zenpower if you can share debug data from zenpower. [Read more](https://github.com/ocerman/zenpower/issues/12)
+- ***Temperature***
+- ***Voltage*** ( SVI2 )
+- ***Current*** ( SVI2 )
+- ***Power*** ( SVI2 )
+
+<br>
+<br>
+
+## Requirements
+
+- Your **Linux Kernel** must support your **CPU**.
+
+    ***ZenPower*** *reads values from **SMN** with* <br>
+    *the kernel function:*  `amd_smn_read`
+    
+    *There is a fallback, however* <br>
+    *it is not guaranteed to work.*
+
+- `AMD Ryzen 3000` CPUs
+
+    Family: `17h` <br>
+    Model: `70h`
+
+    Require a `5.3.4+` kernel or a **[Patched]** one.
+
+
+<br>
+<br>
+
+## Monitoring
+
+You can use the **[ZenMonitor]** or your <br>
+favorite sensor monitoring software.
+
+<br>
+<br>
+
+## Help Wanted
+
+It is greatly appreciated if you **[Share Debug Data]** <br>
+of **ZenPower** to help future development efforts.
+
+<br>
+<br>
 
 ## Notes
- - Some users reported that a restart is needed after module installation
- - If you are having trouble compiling zenpower under Ubuntu 18.04 (or older) with new upstream kernel, see [#23](https://github.com/ocerman/zenpower/issues/23)
- - The meaning of raw current values from SVI2 telemetry are not standardised so the current/power readings may not be accurate on all systems (depends on the board model).
+
+ - Some users have reported that a restart <br>
+   was necessary after module installation.
+
+ - If you are having trouble compiling **ZenPower** under <br>
+   `Ubuntu 18.04+` with new upstream kernel, see **[#23]**.
+ 
+ - The meaning of raw current values from **SVI2** <br>
+   telemetry are not standardized so the current <br>
+   and power readings may not be accurate on <br>
+   all systems (depends on the board model).
+
+<br>
+
+
+<!----------------------------------------------------------------------------->
+
+[Share Debug Data]: https://github.com/ocerman/zenpower/issues/12
+[ZenMonitor]: https://github.com/ocerman/zenmonitor
+[Patched]: https://patchwork.kernel.org/patch/11043277/
+[#23]: https://github.com/ocerman/zenpower/issues/23
+
+[Activate]: Documentation/Activate.md
+[Install]: Documentation/Install.md
+[License]: LICENSE
+[Update]: Documentation/Update.md
+
+
+<!----------------------------------[ Badges ]--------------------------------->
+
+[Badge License]: https://img.shields.io/badge/License-GPL2-015d93.svg?style=for-the-badge&labelColor=blue
+
+
+<!---------------------------------[ Buttons ]--------------------------------->
+
+[Button Activate]: https://img.shields.io/badge/Activate-cdad0d?style=for-the-badge&logoColor=white&logo=Lumen
+[Button Install]: https://img.shields.io/badge/Install-df6195?style=for-the-badge&logoColor=white&logo=DocuSign
+[Button Update]: https://img.shields.io/badge/Update-2ba4ab?style=for-the-badge&logoColor=white&logo=MLflow
